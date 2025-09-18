@@ -1,6 +1,32 @@
 from sqlalchemy import String, Integer, Enum, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.engine import URL, Engine, create_engine
 from enum import Enum as PyEnum
+import os
+from dotenv import load_dotenv
+
+def get_database_url() -> str:
+    load_dotenv()
+    MYSQL_USER = os.getenv("MYSQL_USER")
+    MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+    MYSQL_HOST = os.getenv("MYSQL_HOST")
+    MYSQL_PORT = os.getenv("MYSQL_PORT")
+    MYSQL_DB = os.getenv("MYSQL_DB")
+    url_db = URL.create(
+        drivername="mysql+mysqlconnector",
+        username=MYSQL_USER,
+        password=MYSQL_PASSWORD,
+        host=MYSQL_HOST,
+        port=MYSQL_PORT,
+        database=MYSQL_DB,
+    )
+    return url_db
+
+
+def get_database_engine(echo: bool = True) -> Engine:
+    url_db = get_database_url()
+    engine = create_engine(url_db, echo=echo)
+    return engine
 
 # Перечисления для типов улиц и населенных пунктов
 class StreetType(PyEnum):
@@ -60,7 +86,7 @@ class BelpostAddress(Base):
     postcode: Mapped[str | None] = mapped_column(String(6), nullable=True)      # Почтовый индекс
 
     def __repr__(self) -> str:
-        return (f"<BelpostAddress(id={self.id}, city={self.city}, region={self.region}, district={self.district}, "
+        return (f"<BelpostAddress(id={self.address_id}, city={self.city}, region={self.region}, district={self.district}, "
                 f"streetType={self.streetType}, street={self.street}, house={self.house}, "
                 f"building={self.building}, flat={self.flat}, cityType={self.cityType}, "
                 f"postcode={self.postcode})>")
