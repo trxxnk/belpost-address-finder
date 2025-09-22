@@ -5,3 +5,4 @@ private_data/
 .env
 debug/
 output/
+storage/
