@@ -6,6 +6,8 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 import time
 import gc
+import re
+import json
 
 from models import Base, Address
 
@@ -125,6 +127,46 @@ def import_addresses_from_excel():
     print(f"Import completed. Total addresses imported: {total_imported}")
     print(f"Total execution time: {total_time:.2f} seconds")
     print(f"Average import speed: {total_imported/total_time:.2f} rows/sec")
+
+def grouped_to_dict(grouped_abbrs: dict[str:list[str]]) -> dict[str:str]:
+    abbrs_dict = dict()
+    for fullname, abbrs in grouped_abbrs.items():
+        for abbr in abbrs:
+            abbrs_dict[abbr] = fullname
+    return abbrs_dict
+
+def fill_street_type_and_name_orm(session: Session, abbr_dict: dict):
+    """
+    Для всех Address обновляет поля streetType и streetName на основе справочника аббревиатур.
+    abbr_dict: dict, где ключ — аббревиатура, значение — расшифровка.
+    """
+    abbrs = sorted(abbr_dict.keys(), key=len, reverse=True)
+    abbr_pattern = r'^(' + '|'.join([re.escape(a) for a in abbrs]) + r')\s*'
+    abbr_re = re.compile(abbr_pattern, flags=re.IGNORECASE)
+
+    def extract_type_and_street(text):
+        if not isinstance(text, str):
+            return (None, text)
+        m = abbr_re.match(text)
+        if m:
+            abbr = m.group(1)
+            street_type = abbr_dict.get(abbr, abbr_dict.get(abbr.upper(), None))
+            street_name = text[m.end():].strip()
+            return (street_type, street_name)
+        else:
+            return (None, text.strip() if isinstance(text, str) else text)
+
+    addresses = session.query(Address).all()
+    from tqdm import tqdm
+    for i, addr in enumerate(tqdm(addresses, desc="Updating streetType/streetName")):
+        street = addr.street
+        street_type, street_name = extract_type_and_street(street)
+        addr.streetType = street_type
+        addr.streetName = street_name
+        if i % 10_000 == 0:
+            session.commit()
+            gc.collect()
+    session.commit()
 
 if __name__ == "__main__":
     import_addresses_from_excel()

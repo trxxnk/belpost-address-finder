@@ -5,13 +5,15 @@ from enum import Enum as PyEnum
 import os
 from dotenv import load_dotenv
 
-def get_database_url() -> str:
+def get_database_url(str_format: bool = False) -> URL|str:
     load_dotenv()
     MYSQL_USER = os.getenv("MYSQL_USER")
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
     MYSQL_HOST = os.getenv("MYSQL_HOST")
     MYSQL_PORT = os.getenv("MYSQL_PORT")
     MYSQL_DB = os.getenv("MYSQL_DB")
+    if str_format:
+        return f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
     url_db = URL.create(
         drivername="mysql+mysqlconnector",
         username=MYSQL_USER,
@@ -70,7 +72,7 @@ class Base(DeclarativeBase):
 class BelpostAddress(Base):
     __tablename__ = "belpost_addresses"
     
-    address_id: Mapped[int] = mapped_column(Integer, ForeignKey("addresses.id"), primary_key=True, nullable=True,
+    address_id: Mapped[int] = mapped_column(Integer, ForeignKey("addresses.id"), primary_key=True, nullable=False,
                                             autoincrement=False)
     address: Mapped["Address"] = relationship("Address", back_populates="belpost_address")
     
@@ -106,6 +108,9 @@ class Address(Base):
     soato_name: Mapped[str | None] = mapped_column(String(50), nullable=True)       # СОАТО Наименование населенного пункта
     
     belpost_address: Mapped["BelpostAddress"] = relationship("BelpostAddress", back_populates="address")
+    
+    streetName: Mapped[str | None] = mapped_column(String(300), nullable=True)   # Название улицы, проспекта и др.
+    streetType: Mapped[str | None] = mapped_column(String(100), nullable=True)    # Тип улицы (улица, проспект, переулок и др.)
     
     def __repr__(self) -> str:
         return (f"<Address(id={self.id}, street={self.street}, building={self.building} ... >")
