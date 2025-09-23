@@ -1,0 +1,234 @@
+import re
+import json
+import pandas as pd
+from typing import Optional, List, Dict, Any
+from rapidfuzz import fuzz
+from sqlalchemy.orm import Session
+
+from models import SearchResult
+from db.models import (StreetType, CityType, Address, BelpostAddress,
+                     get_database_engine, get_database_url)
+from parser import setup_driver, search_postal_code
+
+
+class AddressService:
+    def __init__(self):
+        self.engine = get_database_engine(echo=False)
+        self.session = Session(self.engine)
+        self.driver = None
+        self.abbr_dict = self._load_abbreviations()
+        
+        self.region = ""
+        self.district = ""
+        self.sovet = ""
+        self.city_name = ""
+        self.city_type = ""
+        self.street_type = ""
+        self.street_name = ""
+        self.building = ""
+        
+        self.replace_dict = {
+            "г.": "город",
+            "аг.": "агрогородок", 
+            "гп": "городской поселок",
+            "д.": "деревня",
+            "с/с": "сельский совет",
+            "р-н": "район",
+            "п.": "поселок",
+            "рп": "рабочий поселок",
+            "кп": "курортный поселок",
+            "х.": "хутор",
+            "пгт": "поселок городского типа",
+        }
+
+    def _load_abbreviations(self) -> Dict[str, str]:
+        """Загрузка словаря аббревиатур"""
+        try:
+            with open('db/grouped_abbrs.json', 'r', encoding='utf-8') as f:
+                grouped_dict = json.load(f)
+                abbrs_dict = {}
+                for fullname, abbrs in grouped_dict.items():
+                    for abbr in abbrs:
+                        abbrs_dict[abbr] = fullname
+                return abbrs_dict
+        except Exception as e:
+            print(f"Ошибка загрузки аббревиатур: {e}")
+            return {}
+
+    def build_address(self, region: str = None, district: str = None, 
+                     sovet: str = None,
+                     city_type: str = None, city_name: str = None,
+                     street_type:str = None, street_name: str = None, 
+                     building: str = None) -> str:
+        """Универсальный конструктор адреса"""
+        parts = []
+        
+        if region:
+            parts.append(f"{region} область")
+        if district:
+            parts.append(f"{district} район")
+        if sovet:
+            parts.append(f"{sovet} сельсовет")
+        if city_name:
+            if city_type:
+                parts.append(f"{city_type} {city_name}")
+            else:
+                parts.append(city_name)
+        if street_name:
+            if street_type:
+                parts.append(f"{street_type} {street_name}")
+            else:
+                parts.append(street_name)
+        if building:
+            parts.append(building)
+            
+        return ", ".join(parts)
+
+    def filter_addresses(self, df: pd.DataFrame, region: str, 
+                        district: str, city: str) -> pd.DataFrame:
+        """Фильтрация адресов по региону, району и городу"""
+        mask = (
+            (df["Область"].astype(str).str.contains(region, case=False, na=False) if region else True) &
+            (df["Район"].astype(str).str.contains(district, case=False, na=False) if district else True) &
+            (df["Город"].astype(str).str.contains(city, case=False, na=False) if city else True)
+        )
+        return df[mask]
+
+    def add_similarity_scores(self, df: pd.DataFrame, target_string: str, 
+                            column_name: str) -> pd.DataFrame:
+        """Вычисление схожести с использованием rapidfuzz"""
+        df = df.copy()
+        scores = [fuzz.ratio(str(x).lower(), str(target_string).lower()) 
+                 for x in df[column_name]]
+        df['similarity_score'] = scores
+        df.sort_values(by="similarity_score", ascending=False, inplace=True)
+        return df
+
+    def house_in_range(self, house: str, rule: str) -> bool:
+        """Проверка принадлежности дома правилу из списка домов"""
+        if not house or not rule:
+            return False
+            
+        house = house.strip().upper()
+        rule = rule.strip().upper()
+        
+        if rule == "ВСЕ":
+            return True
+            
+        # Извлекаем номер дома
+        house_match = re.match(r"(\d+)", house)
+        if not house_match:
+            return False
+        house_num = int(house_match.group(1))
+        
+        # Разделяем правила через запятую
+        parts = [p.strip().upper() for p in rule.split(",")]
+        for part in parts:
+            # Диапазон чёт/нечет
+            m = re.match(r"\((\d+)-(\d+)\)", part)
+            if m:
+                start, end = int(m.group(1)), int(m.group(2))
+                if house_num % 2 == start % 2 and start <= house_num <= end:
+                    return True
+                continue
+                
+            # Обычный диапазон
+            m = re.match(r"^(\d+)-(\d+)$", part)
+            if m:
+                start, end = int(m.group(1)), int(m.group(2))
+                if start <= house_num <= end:
+                    return True
+                continue
+                
+            # Конкретный номер
+            if part == house.upper():
+                return True
+                
+        return False
+
+    def search_address(self, search_query: str, progress_callback=None) -> List[SearchResult]:
+        """Основная функция поиска адреса"""
+        try:
+            if progress_callback:
+                progress_callback("Инициализация драйвера браузера...")
+                
+            if not self.driver:
+                self.driver = setup_driver()
+
+            if progress_callback:
+                progress_callback("Поиск адреса на belpost.by...")
+
+            # Поиск на belpost.by
+            raw_results = search_postal_code(self.driver, search_query)
+            if not raw_results:
+                return []
+                
+            # Преобразование в DataFrame
+            df = pd.DataFrame(raw_results, columns=[
+                "Почтовый код", "Область", "Район", 
+                "Город", "Улица", "Номер дома"
+            ])
+
+            if progress_callback:
+                progress_callback("Фильтрация результатов...")
+            
+            region = self.region
+            district = self.district
+            city = self.city_name
+            street = self.street_name
+            street_type = self.street_type
+            building = self.building
+            
+            # Фильтрация
+            if region or district or city:
+                df = self.filter_addresses(df, region, district, city)
+
+            if progress_callback:
+                progress_callback("Вычисление схожести...")
+
+            # Добавление оценок схожести
+            if street:
+                target_string = street_type + " " + street
+                df = self.add_similarity_scores(df, target_string, "Улица")
+            
+            # Проверка номера дома
+            if building:
+                df["house_match"] = df["Номер дома"].apply(
+                    lambda r: self.house_in_range(building, r)
+                )
+            else:
+                df["house_match"] = False
+
+            if progress_callback:
+                progress_callback("Формирование результатов...")
+            
+            # Преобразование в список результатов
+            results = []
+            for _, row in df.iterrows():
+                result = SearchResult(
+                    postal_code=str(row["Почтовый код"]),
+                    region=str(row["Область"]),
+                    district=str(row["Район"]),
+                    city=str(row["Город"]),
+                    street=str(row["Улица"]),
+                    house_numbers=str(row["Номер дома"]),
+                    similarity_score=row.get("similarity_score", 0.0),
+                    house_match=row.get("house_match", False)
+                )
+                results.append(result)
+            
+            # Сортировка результатов
+            results.sort(key=lambda x: (x.house_match, x.similarity_score), reverse=True)
+            
+            return results[:10]  # Возвращаем топ-10 результатов
+            
+        except Exception as e:
+            print(f"Ошибка поиска: {e}")
+            return []
+
+    def close(self):
+        """Закрытие ресурсов"""
+        if self.session:
+            self.session.close()
+        if self.driver:
+            self.driver.quit()
