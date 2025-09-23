@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from rapidfuzz import fuzz
 
 from models import SearchResult
+from models.dropdown_values import RegionType, StreetType, CityType
 
 class AddressProcessor:
     """
@@ -51,35 +52,72 @@ class AddressProcessor:
         """Универсальный конструктор адреса"""
         parts = []
         
-        if region:
+        # Проверяем, что значения не "НЕТ"
+        if region and region != RegionType.NONE.value:
             parts.append(f"{region} область")
         if district:
             parts.append(f"{district} район")
         if sovet:
             parts.append(f"{sovet} сельсовет")
-        if city_name:
+        if city_name and city_type != CityType.NONE.value:
             if city_type:
                 parts.append(f"{city_type} {city_name}")
             else:
                 parts.append(city_name)
+        
+        # Обработка улицы с учетом опции "ДРУГОЕ"
         if street_name:
-            if street_type:
-                parts.append(f"{street_type} {street_name}")
-            else:
+            if street_type == StreetType.OTHER.value:
+                # Если выбрано "ДРУГОЕ", добавляем только название улицы без типа
                 parts.append(street_name)
+            elif street_type != StreetType.NONE.value:
+                # Если выбран конкретный тип, добавляем тип + название
+                parts.append(f"{street_type} {street_name}")
+        
         if building:
             parts.append(building)
             
         return ", ".join(parts)
     
-    def filter_addresses(self, df: pd.DataFrame, region: str, 
-                        district: str, city: str) -> pd.DataFrame:
-        """Фильтрация адресов по региону, району и городу"""
-        mask = (
-            (df["Область"].astype(str).str.contains(region, case=False, na=False) if region else True) &
-            (df["Район"].astype(str).str.contains(district, case=False, na=False) if district else True) &
-            (df["Город"].astype(str).str.contains(city, case=False, na=False) if city else True)
-        )
+    def filter_addresses(self, df: pd.DataFrame, region: str = "", 
+                        district: str = "", sovet: str = "", 
+                        city: str = "") -> pd.DataFrame:
+        """
+        Фильтрация адресов по региону, району, сельсовету и городу
+        
+        Args:
+            df: DataFrame с результатами поиска
+            region: Название области
+            district: Название района
+            sovet: Название сельсовета
+            city: Название населенного пункта
+            
+        Returns:
+            pd.DataFrame: Отфильтрованный DataFrame
+        """
+        mask = pd.Series(True, index=df.index)
+        
+        # Фильтрация по области (если выбрана)
+        if region and region != RegionType.NONE.value:
+            mask &= df["Область"].astype(str).str.contains(region, case=False, na=False)
+        
+        # Фильтрация по району (если указан)
+        if district:
+            mask &= df["Район"].astype(str).str.contains(district, case=False, na=False)
+        
+        # Фильтрация по городу (если указан)
+        if city:
+            mask &= df["Город"].astype(str).str.contains(city, case=False, na=False)
+            
+        # Примечание: для сельсовета нет прямого соответствия в данных от belpost.by,
+        # но можно попробовать найти его в названии населенного пункта или района
+        if sovet:
+            sovet_mask = (
+                df["Город"].astype(str).str.contains(sovet, case=False, na=False) |
+                df["Район"].astype(str).str.contains(sovet, case=False, na=False)
+            )
+            mask &= sovet_mask
+            
         return df[mask]
     
     def add_similarity_scores(self, df: pd.DataFrame, target_string: str, 
@@ -135,7 +173,8 @@ class AddressProcessor:
         return False
     
     def process_results(self, raw_results: List[List[str]], 
-                       region: str = "", district: str = "", city_name: str = "",
+                       region: str = "", district: str = "", sovet: str = "",
+                       city_type: str = "", city_name: str = "",
                        street_type: str = "", street_name: str = "", building: str = "",
                        progress_callback=None) -> List[SearchResult]:
         """
@@ -143,7 +182,8 @@ class AddressProcessor:
         
         Args:
             raw_results: Сырые результаты поиска от BelpostService
-            region, district, city_name: Параметры для фильтрации
+            region, district, sovet: Параметры для фильтрации по административному делению
+            city_type, city_name: Параметры для фильтрации по населенному пункту
             street_type, street_name, building: Параметры для оценки схожести
             progress_callback: Функция обратного вызова для отображения прогресса
             
@@ -163,17 +203,32 @@ class AddressProcessor:
             if progress_callback:
                 progress_callback("Фильтрация результатов...")
             
-            # Фильтрация
-            if region or district or city_name:
-                df = self.filter_addresses(df, region, district, city_name)
+            # Фильтрация по административному делению и населенному пункту
+            if region != RegionType.NONE.value or district or sovet or (city_name and city_type != CityType.NONE.value):
+                df = self.filter_addresses(
+                    df, 
+                    region=region if region != RegionType.NONE.value else "", 
+                    district=district, 
+                    sovet=sovet, 
+                    city=city_name if city_type != CityType.NONE.value else ""
+                )
 
             if progress_callback:
                 progress_callback("Вычисление схожести...")
 
-            # Добавление оценок схожести
+            # Добавление оценок схожести для улицы с учетом опции "ДРУГОЕ"
             if street_name:
-                target_string = street_type + " " + street_name if street_type else street_name
-                df = self.add_similarity_scores(df, target_string, "Улица")
+                # Если выбрано "ДРУГОЕ", ищем только по названию улицы без типа
+                if street_type == StreetType.OTHER.value:
+                    target_string = street_name
+                # Если выбран конкретный тип (не "НЕТ"), ищем по типу + название
+                elif street_type != StreetType.NONE.value:
+                    target_string = f"{street_type} {street_name}"
+                else:
+                    target_string = ""
+                
+                if target_string:
+                    df = self.add_similarity_scores(df, target_string, "Улица")
             
             # Проверка номера дома
             if building:

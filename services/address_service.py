@@ -2,6 +2,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from models import SearchResult
+from models import RegionType, StreetType, CityType
 from db.models import get_database_engine
 from services.belpost_service import BelpostService
 from services.address_processor import AddressProcessor
@@ -22,12 +23,12 @@ class AddressService:
         self.address_processor = AddressProcessor()
         
         # Параметры поиска адреса
-        self.region = ""
+        self.region = RegionType.NONE.value
         self.district = ""
         self.sovet = ""
         self.city_name = ""
-        self.city_type = ""
-        self.street_type = ""
+        self.city_type = CityType.NONE.value
+        self.street_type = StreetType.NONE.value
         self.street_name = ""
         self.building = ""
     
@@ -62,6 +63,8 @@ class AddressService:
                 raw_results,
                 region=self.region,
                 district=self.district,
+                sovet=self.sovet,
+                city_type=self.city_type,
                 city_name=self.city_name,
                 street_type=self.street_type,
                 street_name=self.street_name,

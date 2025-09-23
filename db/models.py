@@ -30,41 +30,42 @@ def get_database_engine(echo: bool = True) -> Engine:
     engine = create_engine(url_db, echo=echo)
     return engine
 
-# Перечисления для типов улиц и населенных пунктов
+# Перечисления для типов улиц (отсортировано)
 class StreetType(PyEnum):
-    STREET = "УЛИЦА"
-    LANE = "ПЕРЕУЛОК"
-    DRIVE = "ПРОЕЗД"
     AVENUE = "ПРОСПЕКТ"
-    TRACT = "ТРАКТ"
     BOULEVARD = "БУЛЬВАР"
     DEAD_END = "ТУПИК"
-    SQUARE = "ПЛОЩАДЬ"
-    RING = "КОЛЬЦО"
-    EMBANKMENT = "НАБЕРЕЖНАЯ"
-    VILLAGE = "ПОСЕЛОК"
-    HIGHWAY = "ШОССЕ"
-    STATION = "СТАНЦИЯ"
-    MICRODISTRICT = "МИКРОРАЙОН"
-    MILITARY_UNIT = "ВОИНСКАЯ ЧАСТЬ"
-    MILITARY_TOWN = "ВОЕННЫЙ ГОРОДОК"
-    ENTRANCE = "ВЪЕЗД"
-    PARK = "ПАРК"
-    TERRITORY = "ТЕРРИТОРИЯ"
     DESCENT = "СПУСК"
+    DRIVE = "ПРОЕЗД"
+    EMBANKMENT = "НАБЕРЕЖНАЯ"
+    ENTRANCE = "ВЪЕЗД"
+    HIGHWAY = "ШОССЕ"
+    LANE = "ПЕРЕУЛОК"
+    MICRODISTRICT = "МИКРОРАЙОН"
+    MILITARY_TOWN = "ВОЕННЫЙ ГОРОДОК"
+    MILITARY_UNIT = "ВОИНСКАЯ ЧАСТЬ"
+    PARK = "ПАРК"
+    RING = "КОЛЬЦО"
+    SQUARE = "ПЛОЩАДЬ"
+    STATION = "СТАНЦИЯ"
+    STREET = "УЛИЦА"
+    TERRITORY = "ТЕРРИТОРИЯ"
+    TRACT = "ТРАКТ"
+    VILLAGE = "ПОСЕЛОК"
 
+# Перечисления для типов населенных пунктов (отсортировано)
 class CityType(PyEnum):
     AGROTOWN = "АГРОГОРОДОК"
     CITY = "ГОРОД"
-    VILLAGE = "ДЕРЕВНЯ"
-    SETTLEMENT = "ПОСЕЛОК"
-    URBAN_SETTLEMENT = "ГОРОДСКОЙ ПОСЕЛОК"
-    RESORT_SETTLEMENT = "КУРОРТНЫЙ ПОСЕЛОК"
     FARM = "ХУТОР"
-    WORKERS_SETTLEMENT = "РАБОЧИЙ ПОСЕЛОК"
-    SELO = "СЕЛО"
+    RESORT_SETTLEMENT = "КУРОРТНЫЙ ПОСЕЛОК"
     RURAL_COUNCIL = "СЕЛЬСОВЕТ"
+    SELO = "СЕЛО"
+    SETTLEMENT = "ПОСЕЛОК"
     SPECIAL_ECONOMIC_ZONE = "ОСОБАЯ ЭКОНОМИЧЕСКАЯ ЗОНА"
+    URBAN_SETTLEMENT = "ГОРОДСКОЙ ПОСЕЛОК"
+    VILLAGE = "ДЕРЕВНЯ"
+    WORKERS_SETTLEMENT = "РАБОЧИЙ ПОСЕЛОК"
 
 class Base(DeclarativeBase):
     pass
