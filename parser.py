@@ -48,18 +48,18 @@ def search_postal_code(driver: webdriver.Chrome, address: str):
         encoded_address = quote(address)
         url = f"https://www.belpost.by/Uznatpochtovyykod28indek?search={encoded_address}"
         
-        print(f"Открываем URL: {url}")
+        print(f"[DEBUG] Открываем URL: {url}")
         driver.get(url)
         
         # Ожидание загрузки страницы и появления результатов поиска
         wait = WebDriverWait(driver, 15)
         
         # Ожидание появления таблицы
-        print("Ожидание результатов поиска...")
+        print("[DEBUG] Ожидание результатов поиска...")
         try:
             wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
         except:
-            print("Таблица не найдена в течение времени ожидания")
+            print("[DEBUG] Таблица не найдена в течение времени ожидания")
             return []
         
         # Сохранение HTML для отладки
@@ -73,7 +73,7 @@ def search_postal_code(driver: webdriver.Chrome, address: str):
         tables = driver.find_elements(By.TAG_NAME, "table")
         
         if not tables:
-            print(f"Таблицы не найдены для адреса: {address}")
+            print(f"[DEBUG] Таблицы не найдены для адреса: {address}")
             return []
         
         # Используем первую таблицу, если она одна
@@ -94,7 +94,7 @@ def search_postal_code(driver: webdriver.Chrome, address: str):
                         break
         
         if not result_table:
-            print("Не удалось идентифицировать нужную таблицу")
+            print("[DEBUG] Не удалось идентифицировать нужную таблицу")
             return []
         
         # Получение всех строк из таблицы
@@ -117,7 +117,7 @@ def search_postal_code(driver: webdriver.Chrome, address: str):
         return result
     
     except Exception as e:
-        print(f"Ошибка при парсинге: {e}")
+        print(f"[DEBUG] Ошибка при парсинге: {e}")
         return []
 
 
@@ -139,7 +139,7 @@ def search_multiple_addresses(addresses:list[str]):
         driver = setup_driver()
         
         for address in addresses:
-            print(f"\nПоиск индекса для адреса: {address}")
+            print(f"\n[DEBUG] Поиск индекса для адреса: {address}")
             address_results = search_postal_code(driver, address)
             results[address] = address_results
             
@@ -147,7 +147,7 @@ def search_multiple_addresses(addresses:list[str]):
             time.sleep(1)
     
     except Exception as e:
-        print(f"Ошибка при обработке адресов: {e}")
+        print(f"[DEBUG] Ошибка при обработке адресов: {e}")
     
     finally:
         # Закрываем драйвер после обработки всех адресов
@@ -166,7 +166,7 @@ def save_to_csv(data:list[list[str]], filename:str='postal_codes.csv'):
         filename (str): Имя выходного файла
     """
     if not data:
-        print("Нет данных для сохранения")
+        print("[DEBUG] Нет данных для сохранения")
         return
     
     try:
@@ -184,10 +184,10 @@ def save_to_csv(data:list[list[str]], filename:str='postal_codes.csv'):
             for row in data:
                 writer.writerow(row)
         
-        print(f"Данные успешно сохранены в {filename}")
+        print(f"[DEBUG] Данные успешно сохранены в {filename}")
     
     except Exception as e:
-        print(f"Ошибка при сохранении в CSV: {e}")
+        print(f"[DEBUG] Ошибка при сохранении в CSV: {e}")
 
 
 def save_multiple_results_to_csv(results, filename='all_postal_codes.csv'):
@@ -199,7 +199,7 @@ def save_multiple_results_to_csv(results, filename='all_postal_codes.csv'):
         filename (str): Имя выходного файла
     """
     if not results:
-        print("Нет результатов для сохранения")
+        print("[DEBUG] Нет результатов для сохранения")
         return
     
     try:
@@ -219,10 +219,10 @@ def save_multiple_results_to_csv(results, filename='all_postal_codes.csv'):
                     for row in address_results:
                         writer.writerow([address] + row)
         
-        print(f"Все результаты успешно сохранены в {filename}")
+        print(f"[DEBUG] Все результаты успешно сохранены в {filename}")
     
     except Exception as e:
-        print(f"Ошибка при сохранении результатов: {e}")
+        print(f"[DEBUG] Ошибка при сохранении результатов: {e}")
 
 
 def get_postal_code(address:str):

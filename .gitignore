@@ -1,5 +1,6 @@
 __pycache__/
 .addr_corr_venv/
+.venv_wsl/
 info/
 private_data/
 .env
