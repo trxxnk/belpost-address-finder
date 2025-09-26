@@ -3,6 +3,7 @@ import re
 from rapidfuzz import fuzz, process
 from models.dropdown_values import StreetType, CityType, RegionType
 from services.postal_client import PostalClient
+from services.street_corrector import correct_street_name
 
 def create_search_form(on_search=None, on_parse=None):
     """
@@ -299,7 +300,9 @@ def create_search_form(on_search=None, on_parse=None):
                     
                     # Устанавливаем название улицы
                     if not street_field.disabled:
-                        street_field.value = road_raw.title()  # Первая буква заглавная
+                        road_corrected = correct_street_name(road_raw, "db/streets.txt",
+                                              threshold=80)
+                        street_field.value = road_corrected.capitalize()  # Первая буква заглавная
                 
                 # Обработка номера дома (house_number)
                 if "house_number" in parsed_address:

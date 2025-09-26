@@ -8,6 +8,7 @@ from services.address_service import AddressService
 from assets.styles import PADDING, COLORS
 from views.components import create_header, create_search_form, create_result_card
 from models.dropdown_values import RegionType, CityType, StreetType
+from services.street_corrector import correct_street_name
 
 class MainView:
     def __init__(self, page: ft.Page):
@@ -164,6 +165,7 @@ class MainView:
             self.address_service.street_type = street_type_dropdown.value
             self.address_service.street_name = street_field.value.strip() if street_field.value else ""
             self.address_service.building = house_field.value.strip() if house_field.value else ""
+
             
             # Формируем строку адреса для поиска
             address_query = self.address_service.build_address(
