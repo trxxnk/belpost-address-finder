@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 import time
 import gc
 import re
-import json
 
 from models import Base, Address
 

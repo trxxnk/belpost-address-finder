@@ -1,7 +1,7 @@
 import flet as ft
 import re
 from rapidfuzz import fuzz, process
-from models import StreetType, CityType, RegionType
+from models.dropdown_values import StreetType, CityType, RegionType
 from services.postal_client import PostalClient
 
 def create_search_form(on_search=None, on_parse=None):

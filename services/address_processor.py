@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List, Dict, Any, Optional
 from rapidfuzz import fuzz
 
-from models import SearchResult
+from models.search_result import SearchResult
 from models.dropdown_values import RegionType, StreetType, CityType
 
 class AddressProcessor:

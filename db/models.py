@@ -31,7 +31,7 @@ def get_database_engine(echo: bool = True) -> Engine:
     return engine
 
 # Перечисления для типов улиц (отсортировано)
-class StreetType(PyEnum):
+class StreetTypeDB(PyEnum):
     AVENUE = "ПРОСПЕКТ"
     BOULEVARD = "БУЛЬВАР"
     DEAD_END = "ТУПИК"
@@ -54,7 +54,7 @@ class StreetType(PyEnum):
     VILLAGE = "ПОСЕЛОК"
 
 # Перечисления для типов населенных пунктов (отсортировано)
-class CityType(PyEnum):
+class CityTypeDB(PyEnum):
     AGROTOWN = "АГРОГОРОДОК"
     CITY = "ГОРОД"
     FARM = "ХУТОР"
@@ -80,12 +80,12 @@ class BelpostAddress(Base):
     city: Mapped[str | None] = mapped_column(String(100), nullable=True)        # Наименование населенного пункта
     region: Mapped[str | None] = mapped_column(String(100), nullable=True)      # Область
     district: Mapped[str | None] = mapped_column(String(100), nullable=True)    # Район
-    streetType: Mapped[StreetType | None] = mapped_column(Enum(StreetType), nullable=True)   # Тип улицы
+    streetType: Mapped[StreetTypeDB | None] = mapped_column(Enum(StreetTypeDB), nullable=True)   # Тип улицы
     street: Mapped[str | None] = mapped_column(String(150), nullable=True)      # Улица
     house: Mapped[str | None] = mapped_column(String(20), nullable=True)        # Дом
     building: Mapped[str | None] = mapped_column(String(20), nullable=True)     # Корпус
     flat: Mapped[str | None] = mapped_column(String(20), nullable=True)         # Квартира
-    cityType: Mapped[CityType | None] = mapped_column(Enum(CityType), nullable=True)     # Тип населенного пункта
+    cityType: Mapped[CityTypeDB | None] = mapped_column(Enum(CityTypeDB), nullable=True)     # Тип населенного пункта
     postcode: Mapped[str | None] = mapped_column(String(6), nullable=True)      # Почтовый индекс
 
     def __repr__(self) -> str:

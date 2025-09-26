@@ -2,25 +2,17 @@ import flet as ft
 from typing import List
 import urllib.parse
 import webbrowser
-import threading
-import time
 
-from models import SearchResult
-from services import AddressService
+from models.search_result import SearchResult
+from services.address_service import AddressService
 from assets.styles import PADDING, COLORS
-from views.components import create_header, create_search_form, create_result_card, create_scroll_to_top_button
-from models import RegionType, CityType, StreetType
+from views.components import create_header, create_search_form, create_result_card
+from models.dropdown_values import RegionType, CityType, StreetType
 
 class MainView:
     def __init__(self, page: ft.Page):
         self.page = page
         self.address_service = AddressService()
-        
-        # Контейнер для результатов поиска
-        self.results_container = ft.Column(
-            spacing=10,
-            scroll=ft.ScrollMode.AUTO
-        )
         
         # Текущий поисковый запрос
         self.current_search_query = ""
@@ -45,7 +37,7 @@ class MainView:
         self.page.window.height = 800
         self.page.padding = 20
         self.page.scroll = "auto"  # Включаем прокрутку страницы
-        
+    
     def _create_components(self):
         """Создание компонентов интерфейса"""
         # Заголовок
@@ -66,13 +58,19 @@ class MainView:
             disabled=True
         )
         
-        # Кнопка для прокрутки вверх
+        # Контейнер для результатов поиска (адаптивная сетка)
+        self.results_grid = ft.ResponsiveRow(
+            spacing=10,
+            run_spacing=10,
+        )
+        
+        # Кнопка для возврата вверх
         self.scroll_to_top_button = ft.FloatingActionButton(
             icon=ft.Icons.ARROW_UPWARD,
             bgcolor=COLORS["scroll_top_bg"],
             tooltip="Вернуться вверх",
-            on_click=lambda e: self.page.scroll_to(0, duration=300),
-            visible=False
+            on_click=lambda e: self.page.scroll_to(0),
+            visible=True
         )
         
         # Добавление компонентов на страницу
@@ -84,35 +82,19 @@ class MainView:
                     ft.Container(
                         content=ft.Column([
                             self.results_header,
-                            self.results_container
+                            self.results_grid
                         ]),
                         padding=ft.padding.only(top=PADDING["medium"], bottom=PADDING["large"])
                     )
                 ]),
-                expand=True,  # Растягиваем контейнер на всю доступную ширину
-                width=self.page.window.width - 40,  # Учитываем отступы страницы
+                expand=True
             ),
             self.scroll_to_top_button
         )
-        
-        # # Обработчик прокрутки
-        # def on_scroll(e):
-        #     # Если прокручено вниз больше чем на 300 пикселей, показываем кнопку
-        #     if self.page.scroll > 300:
-        #         if not self.scroll_to_top_button.visible:
-        #             self.scroll_to_top_button.visible = True
-        #             self.page.update()
-        #     else:
-        #         if self.scroll_to_top_button.visible:
-        #             self.scroll_to_top_button.visible = False
-        #             self.page.update()
-        
-        # Устанавливаем обработчик прокрутки
-        # self.page.on_scroll = on_scroll
     
     def _update_progress(self, message: str):
         """Обновление индикатора прогресса"""
-        if not self.form_controls:
+        if not self.form_controls or not self.page:
             return
             
         self.form_controls["progress_text"].value = message
@@ -155,20 +137,22 @@ class MainView:
         has_district = district_field.value and district_field.value.strip()
         
         if not (has_city or has_street or has_region or has_district):
-            self.page.snack_bar = ft.SnackBar(content=ft.Text("Укажите хотя бы один параметр для поиска"))
-            self.page.snack_bar.open = True
-            self.page.update()
+            if self.page:
+                self.page.snack_bar = ft.SnackBar(content=ft.Text("Укажите хотя бы один параметр для поиска"))
+                self.page.snack_bar.open = True
+                self.page.update()
             return
         
         # Устанавливаем флаг выполнения поиска
         self.is_searching = True
         
         # Очистка предыдущих результатов
-        self.results_container.controls.clear()
+        self.results_grid.controls.clear()
         
         # Отключаем кнопку поиска
         self.form_controls["search_button"].disabled = True
-        self.page.update()
+        if self.page:
+            self.page.update()
         
         try:
             # Формируем параметры поиска
@@ -195,12 +179,14 @@ class MainView:
             
             # Если строка адреса пустая (все поля "НЕТ" или пустые), выдаем ошибку
             if not address_query:
-                self.page.snack_bar = ft.SnackBar(content=ft.Text("Укажите хотя бы один параметр для поиска"))
-                self.page.snack_bar.open = True
-                self.page.update()
+                if self.page:
+                    self.page.snack_bar = ft.SnackBar(content=ft.Text("Укажите хотя бы один параметр для поиска"))
+                    self.page.snack_bar.open = True
+                    self.page.update()
                 self.is_searching = False
                 self.form_controls["search_button"].disabled = False
-                self.page.update()
+                if self.page:
+                    self.page.update()
                 return
             
             # Сохраняем текущий поисковый запрос для генерации URL
@@ -209,13 +195,15 @@ class MainView:
             # Активируем кнопку заголовка результатов
             self.results_header.disabled = False
             self.results_header.text = f"Результаты поиска: {address_query}"
-            self.page.update()
+            if self.page:
+                self.page.update()
             
             # Показываем индикатор прогресса
             progress_ring.visible = True
             progress_text.visible = True
             progress_text.value = "Выполняется поиск..."
-            self.page.update()
+            if self.page:
+                self.page.update()
             
             # Поиск
             results = self.address_service.search_address(
@@ -226,16 +214,22 @@ class MainView:
             # Скрытие прогресса
             progress_ring.visible = False
             progress_text.visible = False
-            self.page.update()
+            if self.page:
+                self.page.update()
             
             # Отображение результатов
             self._display_results(results)
             
+            # Прокрутка к результатам (простой вариант без потоков)
+            if self.page:
+                self.page.scroll_to(self.results_header)
+            
         except Exception as e:
+            # raise e
             # Обработка ошибок
             progress_ring.visible = False
             progress_text.visible = False
-            
+            print(f"[ERROR] Ошибка при поиске: {str(e)}")
             error_card = ft.Card(
                 content=ft.Container(
                     content=ft.Text(
@@ -247,8 +241,14 @@ class MainView:
                 )
             )
             
-            self.results_container.controls.append(error_card)
-            self.page.update()
+            self.results_grid.controls.append(
+                ft.Container(
+                    content=error_card,
+                    col={"sm": 12}  # На маленьких экранах занимает всю ширину
+                )
+            )
+            if self.page:
+                self.page.update()
             
         finally:
             # Сбрасываем флаг выполнения поиска
@@ -256,91 +256,80 @@ class MainView:
             
             # Разблокируем кнопку поиска
             self.form_controls["search_button"].disabled = False
-            self.page.update()
+            if self.page:
+                self.page.update()
     
     def _display_results(self, results: List[SearchResult]):
-        """Отображение результатов поиска в сетке 3x3"""
+        """Отображение результатов поиска в адаптивной сетке"""
         if not results:
             # Если результатов нет, показываем сообщение
-            self.results_container.controls.append(
-                ft.Card(
-                    content=ft.Container(
-                        content=ft.Text(
-                            "Адреса не найдены. Попробуйте изменить запрос.",
-                            size=16,
-                            color=ft.Colors.ORANGE
-                        ),
-                        padding=20
-                    )
+            self.results_grid.controls.append(
+                ft.Container(
+                    content=ft.Card(
+                        content=ft.Container(
+                            content=ft.Text(
+                                "Адреса не найдены. Попробуйте изменить запрос.",
+                                size=16,
+                                color=ft.Colors.ORANGE
+                            ),
+                            padding=20
+                        )
+                    ),
+                    col={"sm": 12}  # На маленьких экранах занимает всю ширину
                 )
             )
-            self.page.update()
+            if self.page:
+                self.page.update()
             return
         
         # Ограничиваем до 9 результатов для сетки 3x3
         results = results[:9]
         
-        # Вычисляем доступную ширину для карточек
-        # Вычитаем отступы страницы и отступы между карточками
-        available_width = self.page.width - 40  # Отступы страницы 20px с каждой стороны
-        card_width = (available_width - 40) / 3  # 20px отступ между карточками (2 отступа на 3 карточки)
-        
-        # Создаем сетку 3x3
-        grid_rows = []
-        current_row = []
-        
+        # Отображение результатов с ранжированием в адаптивной сетке
         for i, result in enumerate(results):
             rank = i + 1  # Ранг начинается с 1
             result_card = create_result_card(result, rank)
             
-            # Ограничиваем ширину карточки
-            card_container = ft.Container(
-                content=result_card,
-                width=card_width,
-                margin=ft.margin.only(right=10, bottom=10)
-            )
-            
-            # Добавляем карточку в текущую строку
-            current_row.append(card_container)
-            
-            # Если строка содержит 3 карточки или это последний результат, добавляем строку в сетку
-            if len(current_row) == 3 or i == len(results) - 1:
-                # Если в последней строке меньше 3 карточек, добавляем пустые контейнеры
-                while len(current_row) < 3:
-                    current_row.append(ft.Container(width=card_width))
-                
-                # Добавляем строку в сетку
-                grid_rows.append(
-                    ft.Row(
-                        controls=current_row,
-                        alignment=ft.MainAxisAlignment.START,
-                        spacing=10
-                    )
+            # Добавляем карточку в адаптивную сетку
+            # col=4 означает 3 карточки в ряд (12/4=3) на больших экранах
+            # col=6 означает 2 карточки в ряд (12/6=2) на средних экранах
+            # col=12 означает 1 карточка в ряд на маленьких экранах
+            self.results_grid.controls.append(
+                ft.Container(
+                    content=result_card,
+                    padding=5,
+                    col={"xs": 12, "sm": 6, "md": 6, "lg": 4, "xl": 4}
                 )
-                
-                # Начинаем новую строку
-                current_row = []
+            )
         
-        # Добавляем все строки в контейнер результатов
-        for row in grid_rows:
-            self.results_container.controls.append(row)
-        
-        # Обновляем страницу
-        self.page.update()
-        
-        # Прокручиваем к результатам с небольшой задержкой
-        def delayed_scroll():
-            time.sleep(0.3)  # Небольшая задержка для завершения рендеринга
-            self.page.scroll_to(self.results_header, duration=300)
+        # Обновляем страницу для отображения результатов
+        if self.page:
             self.page.update()
-        
-        # Запускаем прокрутку в отдельном потоке
-        threading.Thread(target=delayed_scroll).start()
     
     def _setup_window_events(self):
         """Настройка обработчиков событий окна"""
         def on_window_event(e):
             if e.data == "close":
                 self.address_service.close()
+                # Разрываем циклические ссылки при закрытии
+                self._cleanup_references()
         
         self.page.on_window_event = on_window_event
+    
+    def _cleanup_references(self):
+        """Очистка циклических ссылок"""
+        # Очищаем ссылки на компоненты
+        if hasattr(self, 'form_controls'):
+            self.form_controls.clear()
+        
+        # Очищаем ссылки на результаты
+        if hasattr(self, 'results_grid'):
+            self.results_grid.controls.clear()
+        
+        # Очищаем ссылку на страницу
+        self.page = None
+        
+        # Очищаем ссылки на сервисы
+        if hasattr(self, 'address_service'):
+            self.address_service.close()
+            self.address_service = None
