@@ -7,3 +7,5 @@ private_data/
 debug/
 output/
 storage/
+db/*.csv
+db/*.txt

@@ -22,7 +22,7 @@ def correct_street_name(input_street: str, correct_streets_file: str, threshold:
             return input_street
         
         # Ищем лучшее совпадение
-        best_match, score, _ = process.extractOne(input_street.lower(), correct_streets, scorer=fuzz.ratio)
+        best_match, score, _ = process.extractOne(input_street.lower(), correct_streets, scorer=fuzz.token_sort_ratio)
         
         # Если совпадение выше порога, возвращаем исправленное название
         if score >= threshold:

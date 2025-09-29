@@ -48,18 +48,23 @@ class AddressProcessor:
                      sovet: str = None,
                      city_type: str = None, city_name: str = None,
                      street_type:str = None, street_name: str = None, 
-                     building: str = None) -> str:
+                     building: str = None,
+                     spec_mode: bool = False) -> str:
         """Универсальный конструктор адреса"""
         parts = []
         
         # Проверяем, что значения не "НЕТ"
         if region and region != RegionType.NONE.value:
+            region = region.lower().capitalize()
             parts.append(f"{region} область")
         if district:
+            district = district.lower().capitalize()
             parts.append(f"{district} район")
         if sovet:
+            sovet = sovet.lower().capitalize()
             parts.append(f"{sovet} сельсовет")
         if city_name and city_type != CityType.NONE.value:
+            city_name = city_name.lower().capitalize()
             if city_type:
                 parts.append(f"{city_type} {city_name}")
             else:
@@ -67,6 +72,7 @@ class AddressProcessor:
         
         # Обработка улицы с учетом опции "ДРУГОЕ"
         if street_name:
+            street_name = street_name.lower().capitalize()
             if street_type == StreetType.OTHER.value:
                 # Если выбрано "ДРУГОЕ", добавляем только название улицы без типа
                 parts.append(street_name)
@@ -77,7 +83,7 @@ class AddressProcessor:
         if building:
             parts.append(building)
             
-        return ", ".join(parts)
+        return ", ".join(parts) if not spec_mode else " ".join(parts).lower()
     
     def filter_addresses(self, df: pd.DataFrame, region: str = "", 
                         district: str = "", sovet: str = "", 
