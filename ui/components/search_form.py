@@ -2,10 +2,10 @@ import flet as ft
 import re
 from rapidfuzz import fuzz, process
 from models.dropdown_values import StreetType, CityType, RegionType
-from services.postal_client import PostalClient
-from services.street_corrector import correct_street_name
+from utils.postal_client import PostalClient
+from business.street_corrector import correct_street_name
 
-from services.address_processor import AddressProcessor
+from business.address_processor import AddressProcessor
 
 def extract_selsovet(address: str):
     """

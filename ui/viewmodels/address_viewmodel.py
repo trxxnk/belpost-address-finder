@@ -6,7 +6,7 @@ ViewModel для управления поиском адресов.
 from typing import List, Optional, Callable, Dict, Any
 from models.search_result import SearchResult
 from models.dropdown_values import RegionType, CityType, StreetType
-from services.address_service import AddressService
+from business.address_service import AddressService
 from logger import get_logger
 from exceptions import BelpostServiceException, NetworkException, ParsingException, ValidationException
 from .base_viewmodel import BaseViewModel

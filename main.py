@@ -1,5 +1,5 @@
 import flet as ft
-from views import MainView
+from ui.main_view import MainView
 
 def main(page: ft.Page):
     """

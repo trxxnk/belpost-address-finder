@@ -8,10 +8,10 @@ from typing import List
 import webbrowser
 
 from models.search_result import SearchResult
-from services.address_service import AddressService
-from viewmodels.address_viewmodel import AddressViewModel
+from business.address_service import AddressService
+from ui.viewmodels.address_viewmodel import AddressViewModel
 from assets.styles import PADDING, COLORS
-from views.components import create_header, create_search_form, create_result_card
+from ui.components import create_header, create_search_form, create_result_card
 from models.dropdown_values import RegionType, CityType, StreetType
 from logger import get_logger
 

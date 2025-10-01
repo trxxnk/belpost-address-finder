@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 
 from models.search_result import SearchResult
 from models.dropdown_values import RegionType, StreetType, CityType
-from db.models import get_database_engine
-from services.belpost_service import BelpostService
-from services.address_processor import AddressProcessor
+from data.models import get_database_engine
+from business.belpost_service import BelpostService
+from business.address_processor import AddressProcessor
 
 class AddressService:
     """
