@@ -49,31 +49,31 @@ def _safe_convert_to_int(value):
         return None
 
 def import_addresses_from_excel():
-    print(f"Loading data from {EXCEL_FILE}...")
+    # print(f"Loading data from {EXCEL_FILE}...")
     
     if not os.path.exists(EXCEL_FILE):
-        print(f"Error: File {EXCEL_FILE} not found!")
+        # print(f"Error: File {EXCEL_FILE} not found!")
         return
     
     start_time = time.time()
     
-    print("Reading Excel file (this may take a while for large files)...")
+    # print("Reading Excel file (this may take a while for large files)...")
     try:
         df = pd.read_excel(
             EXCEL_FILE, 
             engine='openpyxl'
         )
-        print(f"Excel file loaded. Found {len(df)} rows.")
+        # print(f"Excel file loaded. Found {len(df)} rows.")
         
         total_rows = len(df)
         chunks = [df[i:i + BATCH_SIZE] for i in range(0, total_rows, BATCH_SIZE)]
-        print(f"Split into {len(chunks)} chunks of {BATCH_SIZE} rows each.")
+        # print(f"Split into {len(chunks)} chunks of {BATCH_SIZE} rows each.")
         
         del df
         gc.collect()
         
     except Exception as e:
-        print(f"Error reading Excel file: {e}")
+        # print(f"Error reading Excel file: {e}")
         return
     
     engine = get_database_connection()
@@ -82,7 +82,7 @@ def import_addresses_from_excel():
     
     for chunk_idx, chunk_df in enumerate(chunks):
         chunk_start_time = time.time()
-        print(f"Processing chunk {chunk_idx+1}/{len(chunks)}...")
+        # print(f"Processing chunk {chunk_idx+1}/{len(chunks)}...")
         
         chunk_df.columns = [col.strip() if isinstance(col, str) else col for col in chunk_df.columns]
         
@@ -112,20 +112,20 @@ def import_addresses_from_excel():
                 
             total_imported += len(addresses)
             chunk_time = time.time() - chunk_start_time
-            print(f"Imported {len(addresses)} addresses in this batch. Total: {total_imported}")
-            print(f"Chunk processing time: {chunk_time:.2f} seconds ({len(addresses)/chunk_time:.2f} rows/sec)")
+            # print(f"Imported {len(addresses)} addresses in this batch. Total: {total_imported}")
+            # print(f"Chunk processing time: {chunk_time:.2f} seconds ({len(addresses)/chunk_time:.2f} rows/sec)")
             
             del addresses
             del chunk_df
             gc.collect()
             
         except Exception as e:
-            print(f"Error importing batch: {e}")
+            # print(f"Error importing batch: {e}")
     
     total_time = time.time() - start_time
-    print(f"Import completed. Total addresses imported: {total_imported}")
-    print(f"Total execution time: {total_time:.2f} seconds")
-    print(f"Average import speed: {total_imported/total_time:.2f} rows/sec")
+    # print(f"Import completed. Total addresses imported: {total_imported}")
+    # print(f"Total execution time: {total_time:.2f} seconds")
+    # print(f"Average import speed: {total_imported/total_time:.2f} rows/sec")
 
 def grouped_to_dict(grouped_abbrs: dict[str:list[str]]) -> dict[str:str]:
     abbrs_dict = dict()

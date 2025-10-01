@@ -2,6 +2,10 @@ import requests
 from typing import Dict, Any, Optional
 import json
 import urllib.parse
+from logger import get_logger
+
+# Создание логгера для модуля
+logger = get_logger("addr_corr.services.postal_client")
 
 class PostalClient:
     """Клиент для взаимодействия с микросервисом парсинга адресов"""
@@ -14,6 +18,7 @@ class PostalClient:
             base_url: Базовый URL микросервиса
         """
         self.base_url = base_url
+        logger.info(f"Инициализирован PostalClient с базовым URL: {base_url}")
     
     def parse_address(self, address: str) -> Dict[str, Any]:
         """
@@ -27,7 +32,7 @@ class PostalClient:
         """
         try:
             # Выводим адрес для отладки
-            print(f"[DEBUG] Исходный адрес: '{address}'")
+            logger.debug(f"Исходный адрес: '{address}'")
             
             # Кодируем адрес для URL
             encoded_address = urllib.parse.quote(address)
@@ -37,10 +42,10 @@ class PostalClient:
             
             # Создаем полный URL с параметрами для отладки
             full_url = f"{url}?address={encoded_address}"
-            print(f"[DEBUG] Полный URL: {full_url}")
+            logger.debug(f"Полный URL: {full_url}")
             
             # Отправляем запрос
-            print(f"[REQUEST] GET {url} с параметром address={encoded_address}")
+            logger.debug(f"GET {url} с параметром address={encoded_address}")
             
             response = requests.get(
                 url,
@@ -48,30 +53,30 @@ class PostalClient:
                 timeout=10  # Увеличиваем таймаут до 10 секунд
             )
             
-            print(f"[RESPONSE] Статус: {response.status_code}")
-            print(f"[RESPONSE] Заголовки: {dict(response.headers)}")
-            print(f"[RESPONSE] Кодировка: {response.encoding}")
+            logger.debug(f"Статус: {response.status_code}")
+            logger.debug(f"Заголовки: {dict(response.headers)}")
+            logger.debug(f"Кодировка: {response.encoding}")
             
             if response.status_code == 200:
                 try:
                     # Пробуем декодировать JSON
                     response_data = response.json()
-                    print(f"[RESPONSE] Данные JSON: {json.dumps(response_data, ensure_ascii=False, indent=2)}")
+                    logger.debug(f"Данные JSON: {json.dumps(response_data, ensure_ascii=False, indent=2)}")
                     
                     # Проверяем, не пустой ли словарь
                     if not response_data:
-                        print("[WARNING] Получен пустой словарь данных")
+                        logger.warning("Получен пустой словарь данных")
                     
                     return response_data
                 except json.JSONDecodeError as json_err:
-                    print(f"[ERROR] Ошибка декодирования JSON: {json_err}")
-                    print(f"[ERROR] Полученный текст: {response.text}")
+                    logger.error(f"Ошибка декодирования JSON: {json_err}")
+                    logger.error(f"Полученный текст: {response.text}")
                     return {}
             else:
-                print(f"[ERROR] Ошибка при парсинге адреса: {response.status_code} - {response.text}")
+                logger.error(f"Ошибка при парсинге адреса: {response.status_code} - {response.text}")
                 return {}
         except Exception as e:
-            print(f"[ERROR] Ошибка при отправке запроса: {str(e)}")
+            logger.error(f"Ошибка при отправке запроса: {str(e)}")
             return {}
     
     def check_health(self) -> bool:
@@ -83,23 +88,23 @@ class PostalClient:
         """
         try:
             url = f"{self.base_url}/health"
-            print(f"[REQUEST] GET {url}")
+            logger.debug(f"GET {url}")
             
             response = requests.get(url, timeout=5)
             
-            print(f"[RESPONSE] Статус: {response.status_code}")
-            print(f"[RESPONSE] Сырой текст: {response.text}")
+            logger.debug(f"Статус: {response.status_code}")
+            logger.debug(f"Сырой текст: {response.text}")
             
             if response.status_code == 200:
                 try:
                     data = response.json()
-                    print(f"[RESPONSE] Данные: {data}")
+                    logger.debug(f"Данные: {data}")
                     return True
                 except json.JSONDecodeError as e:
-                    print(f"[ERROR] Ошибка декодирования JSON: {e}")
+                    logger.error(f"Ошибка декодирования JSON: {e}")
                     return False
             
             return False
         except Exception as e:
-            print(f"[ERROR] Ошибка при проверке доступности сервиса: {str(e)}")
+            logger.error(f"Ошибка при проверке доступности сервиса: {str(e)}")
             return False

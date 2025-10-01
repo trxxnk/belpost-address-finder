@@ -7,10 +7,13 @@ from db_config import db_config
 from models import Address
 
 def create_streets_book(output_file: str):
-    print("Подключение к БД...")
+    from logger import get_logger
+    logger = get_logger("addr_corr.db.create_streets_book")
+    
+    logger.info("Подключение к БД...")
     engine = create_engine(db_config.MYSQL_URL)
     session = Session(engine)
-    print("Запрос...")
+    logger.info("Запрос...")
     addresses = session.query(
         Address.id,
         Address.soato_oblast,
@@ -21,7 +24,7 @@ def create_streets_book(output_file: str):
         Address.streetType,
         Address.streetName
     ).order_by().all()
-    print("Обработка...")
+    logger.info("Обработка...")
     # Словарь для замены сокращений
     replace_dict = {
             "г.": "город",
@@ -37,7 +40,7 @@ def create_streets_book(output_file: str):
             "пгт": "поселок городского типа",
         }
     df = pd.DataFrame(addresses, columns=["id", "soato_oblast", "soato_district", "soato_sovet", "soato_tip", "soato_name", "streetType", "streetName"])
-    print("Получено адресов: ", len(df))
+    logger.info(f"Получено адресов: {len(df)}")
     df = df[~df["streetType"].isna()]
     df = df[~df["streetName"].isna()]
     df["combo_count"] = (
@@ -57,10 +60,10 @@ def create_streets_book(output_file: str):
     df.drop(columns=["id"], inplace=True)
     df = df.drop_duplicates()
     df["streetName"] = df["streetName"].apply(lambda x: x.lower().capitalize())
-    print("Всего улиц: ", len(df))
-    print("Запись в файл...")
+    logger.info(f"Всего улиц: {len(df)}")
+    logger.info("Запись в файл...")
     df.to_csv(output_file, index=False)
-    print(f"Записано {len(df)} улиц в `{output_file}`")
+    logger.info(f"Записано {len(df)} улиц в `{output_file}`")
     session.close()
 
 if __name__ == "__main__":

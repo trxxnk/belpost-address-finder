@@ -34,7 +34,7 @@ def upgrade() -> None:
         abbr_dict.update(grouped_to_dict(grouped_dict))
     with Session(engine) as session:
         fill_street_type_and_name_orm(session, abbr_dict)
-    print("[INFO(my)] streetType и streetName обновлены для всех записей Address.")
+    # print("[INFO(my)] streetType и streetName обновлены для всех записей Address.")
 
 
 def downgrade() -> None:

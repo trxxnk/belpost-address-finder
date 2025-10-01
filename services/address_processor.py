@@ -41,7 +41,9 @@ class AddressProcessor:
                         abbrs_dict[abbr] = fullname
                 return abbrs_dict
         except Exception as e:
-            print(f"Ошибка загрузки аббревиатур: {e}")
+            from logger import get_logger
+            logger = get_logger("addr_corr.services.address_processor")
+            logger.error(f"Ошибка загрузки аббревиатур: {e}")
             return {}
     
     def build_address(self, region: str = None, district: str = None, 
@@ -268,5 +270,7 @@ class AddressProcessor:
             return results[:10]  # Возвращаем топ-10 результатов
             
         except Exception as e:
-            print(f"Ошибка обработки результатов: {e}")
+            from logger import get_logger
+            logger = get_logger("addr_corr.services.address_processor")
+            logger.error(f"Ошибка обработки результатов: {e}")
             return []

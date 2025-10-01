@@ -26,15 +26,23 @@ def correct_street_name(input_street: str, correct_streets_file: str, threshold:
         
         # Если совпадение выше порога, возвращаем исправленное название
         if score >= threshold:
-            print(f"[DEBUG] Исправление улицы: '{input_street}' -> '{best_match}' (score: {score}%)")
+            from logger import get_logger
+            logger = get_logger("addr_corr.services.street_corrector")
+            logger.debug(f"Исправление улицы: '{input_street}' -> '{best_match}' (score: {score}%)")
             return best_match.lower().capitalize()
         else:
-            print(f"[DEBUG] Нет совпадения: '{input_street}' -> '{best_match}' (score: {score}%)")
+            from logger import get_logger
+            logger = get_logger("addr_corr.services.street_corrector")
+            logger.debug(f"Нет совпадения: '{input_street}' -> '{best_match}' (score: {score}%)")
             return input_street
             
     except FileNotFoundError:
-        print(f"[ERROR]Файл {correct_streets_file} не найден")
+        from logger import get_logger
+        logger = get_logger("addr_corr.services.street_corrector")
+        logger.error(f"Файл {correct_streets_file} не найден")
         return input_street
     except Exception as e:
-        print(f"[ERROR]Произошла ошибка: {e}")
+        from logger import get_logger
+        logger = get_logger("addr_corr.services.street_corrector")
+        logger.error(f"Произошла ошибка: {e}")
         return input_street

@@ -227,7 +227,10 @@ def create_search_form(on_search=None, on_parse=None):
                 preprocessed_address = re.sub(pattern, replacement, preprocessed_address, flags=re.IGNORECASE)
                 
                 
-            print("[RESPONSE 1] >>> ", preprocessed_address)
+            # Логирование предобработанного адреса
+            from logger import get_logger
+            logger = get_logger("addr_corr.views.components.search_form")
+            logger.debug(f"Предобработанный адрес: {preprocessed_address}")
             _selsovet_name, address_no_selsovet = extract_selsovet(preprocessed_address)   
             parsed_address = postal_client.parse_address(address_no_selsovet)
             
@@ -238,7 +241,7 @@ def create_search_form(on_search=None, on_parse=None):
                     oblast_raw = parsed_address["state"]
                     oblast_clean = re.sub(r"(?<!\w)(область|обл\.?)(?!\w)", "", oblast_raw, flags=re.IGNORECASE).strip()
                     _oblast_name = oblast_clean
-                    print("[_oblast_name] >>> ", _oblast_name)
+                    logger.debug(f"Название области: {_oblast_name}")
                     # Словарь соответствия областей и их значений в перечислении
                     oblast_mapping = {
                         "минск": "МИНСКАЯ",
@@ -255,7 +258,7 @@ def create_search_form(on_search=None, on_parse=None):
                     # Удаляем слова "район", "р-н", "рн"
                     district_clean = re.sub(r"(?<!\w)(район|р-н|рн)\.?(?!\w)", "", district_raw, flags=re.IGNORECASE).strip()
                     _district_name = district_clean
-                    print("[_district_name] >>> ", _district_name)
+                    logger.debug(f"Название района: {_district_name}")
                 # Обработка города (city)
                 city_raw=""
                 if "city" in parsed_address:
@@ -293,23 +296,23 @@ def create_search_form(on_search=None, on_parse=None):
                     if city_type_detected:
                         city_type_dropdown.value = city_type_detected
                         _city_type = city_type_detected
-                        print("[_city_type] >>> ", _city_type)
+                        logger.debug(f"Тип города: {_city_type}")
                     # Очищаем название города от типа
                     for pattern in city_type_mapping.keys():
                         city_raw = re.sub(pattern, "", city_raw, flags=re.IGNORECASE).strip()
                     _city_name = city_raw
-                    print("[_city_name] >>> ", _city_name)
+                    logger.debug(f"Название города: {_city_name}")
                                 # Обработка номера дома (house_number)
                 if "house_number" in parsed_address:
                     house_number = parsed_address["house_number"]
                     # Удаляем слова "дом", "д.", "д"
                     house_clean = re.sub(r"(?<!\w)(дом|д\.?)(?!\w)", "", house_number, flags=re.IGNORECASE).strip()
                     _building_number = house_clean
-                    print("[_building_number] >>> ", _building_number)
+                    logger.debug(f"Номер дома: {_building_number}")
                 # Обработка улицы (road)
                 if "road" in parsed_address:
                     road_raw = parsed_address["road"]
-                    print("[_street_name] >>> ", _street_name)
+                    logger.debug(f"Название улицы: {_street_name}")
                     # Определяем тип улицы по ключевым словам
                     street_type_mapping = {
                         r"(?<!\w)(улица|ул\.?)(?!\w)": "УЛИЦА",
@@ -337,7 +340,7 @@ def create_search_form(on_search=None, on_parse=None):
                         road_raw = re.sub(pattern, "", road_raw, flags=re.IGNORECASE).strip()
                         _street_name = road_raw                   
             else:
-                print("[!!!RESPONSE 2] >>> ", "No response")
+                logger.warning("Нет ответа от сервиса парсинга")
             street_book_file = "db/streets_book.txt"
             temp = AddressProcessor().build_address(
                 region = _oblast_name,
@@ -349,11 +352,11 @@ def create_search_form(on_search=None, on_parse=None):
                 street_name = _street_name,
                 spec_mode=True
             )
-            print("[TEMP] >>> ", _oblast_name, _district_name, _selsovet_name, _city_type, _city_name, street_type_detected, _street_name)
+            logger.debug(f"Временный адрес: область={_oblast_name}, район={_district_name}, сельсовет={_selsovet_name}, тип_города={_city_type}, город={_city_name}, тип_улицы={street_type_detected}, улица={_street_name}")
             corrected = correct_street_name(temp, street_book_file,
                                     threshold=80) + " " + parsed_address.get("house_number", "")
             
-            print("[!!!RESPONSE 2] >>> ", corrected)
+            logger.debug(f"Исправленный адрес: {corrected}")
             _selsovet_name, address_no_selsovet = extract_selsovet(corrected)   
             parsed_address = postal_client.parse_address(address_no_selsovet)
             if parsed_address:
@@ -498,7 +501,7 @@ def create_search_form(on_search=None, on_parse=None):
         
         except Exception as ex:
             raise ex
-            print("[!!!EXCEPTION] >>> ", ex)
+            logger.error(f"Исключение при разборе адреса: {ex}")
             e.page.add(ft.SnackBar(content=ft.Text(f"Ошибка при разборе адреса: {str(ex)}")))
         
         finally:

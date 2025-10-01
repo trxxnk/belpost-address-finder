@@ -79,7 +79,8 @@ class LoggingConfig:
         # Проверка уровня логирования
         allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if self.level not in allowed_levels:
-            print(f"Неверный уровень логирования: {self.level}. Используется INFO.")
+            import logging
+            logging.warning(f"Неверный уровень логирования: {self.level}. Используется INFO.")
             self.level = "INFO"
 
 
@@ -95,7 +96,8 @@ class UIConfig:
         # Проверка режима темы
         allowed_modes = ["LIGHT", "DARK", "SYSTEM"]
         if self.theme_mode not in allowed_modes:
-            print(f"Неверный режим темы: {self.theme_mode}. Используется LIGHT.")
+            import logging
+            logging.warning(f"Неверный режим темы: {self.theme_mode}. Используется LIGHT.")
             self.theme_mode = "LIGHT"
 
 
@@ -109,7 +111,8 @@ class AppConfig:
         # Проверка окружения
         allowed_environments = ["development", "testing", "production"]
         if self.environment not in allowed_environments:
-            print(f"Неверное окружение: {self.environment}. Используется development.")
+            import logging
+            logging.warning(f"Неверное окружение: {self.environment}. Используется development.")
             self.environment = "development"
         
         # Вложенные настройки

@@ -75,7 +75,9 @@ class AddressService:
             return results
             
         except Exception as e:
-            print(f"Ошибка поиска: {e}")
+            from logger import get_logger
+            logger = get_logger("addr_corr.services.address_service")
+            logger.error(f"Ошибка поиска: {e}")
             return []
     
     def close(self):

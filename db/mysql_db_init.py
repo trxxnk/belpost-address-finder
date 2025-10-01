@@ -36,9 +36,9 @@ def init_database():
         if not result:
             session.execute(text(f"CREATE DATABASE {MYSQL_DB} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))
             session.commit()
-            print(f"✅ База {MYSQL_DB} создана")
+            # print(f"✅ База {MYSQL_DB} создана")
         else:
-            print(f"ℹ️ База {MYSQL_DB} уже существует")
+            # print(f"ℹ️ База {MYSQL_DB} уже существует")
 
     # Подключаемся к базе и создаем таблицы
     url_with_db = URL.create(
@@ -52,7 +52,7 @@ def init_database():
     engine_with_db = create_engine(url_with_db, echo=True)
 
     Base.metadata.create_all(engine_with_db)
-    print("✅ Таблицы созданы / проверены")
+    # print("✅ Таблицы созданы / проверены")
 
 
 if __name__ == "__main__":
