@@ -1,5 +1,5 @@
 import flet as ft
-from assets.styles import COLORS, TEXT_SIZES, PADDING, ICONS
+from ui.assets.styles import COLORS, TEXT_SIZES, PADDING, ICONS
 
 def create_header():
     """Создает заголовок приложения"""

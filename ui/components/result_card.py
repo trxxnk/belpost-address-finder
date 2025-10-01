@@ -1,6 +1,6 @@
 import flet as ft
 from models.search_result import SearchResult
-from assets.styles import COLORS, TEXT_SIZES, ICONS, get_result_card_style, get_rank_style
+from ui.assets.styles import COLORS, TEXT_SIZES, ICONS, get_result_card_style, get_rank_style
 
 def create_result_card(result: SearchResult, rank: int = 0) -> ft.Card:
     """
