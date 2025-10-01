@@ -14,7 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException as SeleniumWebDriverException
 
-from utils.webdriver_pool import get_driver_pool
+from core.utils.webdriver_pool import get_driver_pool
 from config import settings
 from logger import get_logger
 from exceptions import ParsingException, NetworkException, WebDriverException

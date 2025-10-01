@@ -1,12 +1,12 @@
+# Python
 __pycache__/
 .addr_corr_venv/
 .venv_wsl/
-info/
-private_data/
+
+# Environment
 .env
-debug/
-output/
+data/repositories/private/
+
+# Output
 storage/
-db/*.csv
-db/*.txt
 logs/

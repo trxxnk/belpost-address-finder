@@ -4,8 +4,8 @@
 """
 
 from typing import List, Dict, Any, Optional, Callable
-from utils.webdriver_pool import get_driver_pool
-from business.parser import search_postal_code
+from core.utils.webdriver_pool import get_driver_pool
+from core.parser import search_postal_code
 from config import settings
 from logger import get_logger
 from exceptions import NetworkException, ParsingException, BelpostServiceException, WebDriverException

@@ -8,7 +8,7 @@ from typing import List
 import webbrowser
 
 from models.search_result import SearchResult
-from business.address_service import AddressService
+from core.address_service import AddressService
 from ui.viewmodels.address_viewmodel import AddressViewModel
 from ui.assets.styles import PADDING, COLORS
 from ui.components import create_header, create_search_form, create_result_card

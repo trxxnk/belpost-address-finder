@@ -33,7 +33,7 @@ class AddressProcessor:
     def _load_abbreviations(self) -> Dict[str, str]:
         """Загрузка словаря аббревиатур"""
         try:
-            with open('db/grouped_abbrs.json', 'r', encoding='utf-8') as f:
+            with open('data/repositories/common/grouped_abbrs.json', 'r', encoding='utf-8') as f:
                 grouped_dict = json.load(f)
                 abbrs_dict = {}
                 for fullname, abbrs in grouped_dict.items():

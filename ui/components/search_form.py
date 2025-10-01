@@ -2,10 +2,10 @@ import flet as ft
 import re
 from rapidfuzz import fuzz, process
 from models.dropdown_values import StreetType, CityType, RegionType
-from utils.postal_client import PostalClient
-from business.street_corrector import correct_street_name
+from core.utils.postal_client import PostalClient
+from core.street_corrector import correct_street_name
 
-from business.address_processor import AddressProcessor
+from core.address_processor import AddressProcessor
 
 def extract_selsovet(address: str):
     """
@@ -341,7 +341,7 @@ def create_search_form(on_search=None, on_parse=None):
                         _street_name = road_raw                   
             else:
                 logger.warning("Нет ответа от сервиса парсинга")
-            street_book_file = "db/streets_book.txt"
+            street_book_file = "data/repositories/private/streets_book.txt"
             temp = AddressProcessor().build_address(
                 region = _oblast_name,
                 district = _district_name,
