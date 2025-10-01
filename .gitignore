@@ -9,3 +9,4 @@ output/
 storage/
 db/*.csv
 db/*.txt
+logs/
