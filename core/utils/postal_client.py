@@ -3,13 +3,14 @@ from typing import Dict, Any, Optional
 import json
 import urllib.parse
 from logger import get_configured_logger
+from core.postal_service.postal_config import postal_config
 
 logger = get_configured_logger("core.utils.postal_client")
 
 class PostalClient:
     """Клиент для взаимодействия с микросервисом парсинга адресов"""
     
-    def __init__(self, base_url: str = "http://localhost:5000"):
+    def __init__(self, base_url: str = postal_config.postal_url):
         self.base_url = base_url
         logger.info(f"Инициализирован PostalClient с базовым URL: {base_url}")
     

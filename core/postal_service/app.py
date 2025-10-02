@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import traceback
 import sys
+from postal_config import postal_config
 
 # Проверяем наличие библиотеки pypostal
 try:
@@ -10,12 +11,11 @@ try:
     POSTAL_AVAILABLE = True
 except ImportError:
     import logging
-    logging.error("ВНИМАНИЕ: Библиотека pypostal не установлена. Будет использоваться заглушка.")
+    logging.error("ВНИМАНИЕ: Библиотека pypostal не установлена.")
     exit(1)
 
 app = Flask(__name__)
 CORS(app)  # Разрешаем кросс-доменные запросы
-
 
 @app.route('/parse', methods=['GET', 'POST'])
 def parse():
@@ -73,4 +73,6 @@ def health_check():
     return jsonify(status)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=50000, debug=True)
+    app.run(host=postal_config.postal_host,
+            port=postal_config.postal_port,
+            debug=True)

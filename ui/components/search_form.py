@@ -1,50 +1,10 @@
 import flet as ft
-import re
-from rapidfuzz import fuzz, process
 from models.dropdown_values import StreetType, CityType, RegionType
-from core.utils.postal_client import PostalClient
-from core.street_corrector import correct_street_name
-
-from core.address_processor import AddressProcessor
-from config import settings
+from core.address_service import AddressService
 from logger import get_configured_logger
 
 logger = get_configured_logger("addr_corr.views.components.search_form")
 
-def extract_selsovet(address: str):
-    """
-    Извлекает название сельсовета из адреса.
-    Учитывает варианты:
-      - '<название> сельсовет'
-      - 'сельсовет <название>'
-    Если слева 'район', то берём слово справа.
-    """
-    text = address
-
-    # ищем "X сельсовет"
-    match_left = re.search(r'(\w+)\s+сельсовет', text)
-    # ищем "сельсовет Y"
-    match_right = re.search(r'сельсовет\s+(\w+)', text)
-
-    if not match_left and not match_right:
-        return None, address
-
-    selsovet_name = None
-    cleaned_address = address
-
-    if match_left:
-        left_word = match_left.group(1)
-        if left_word != "район":  # если это не "район"
-            selsovet_name = left_word
-            cleaned_address = re.sub(rf'\b{left_word}\s+сельсовет\b', '', cleaned_address, flags=re.IGNORECASE)
-
-    if selsovet_name is None and match_right:
-        right_word = match_right.group(1)
-        selsovet_name = right_word
-        cleaned_address = re.sub(rf'\bсельсовет\s+{right_word}\b', '', cleaned_address, flags=re.IGNORECASE)
-
-    cleaned_address = re.sub(r'\s{2,}', ' ', cleaned_address).strip()
-    return selsovet_name, cleaned_address
 
 def create_search_form(on_search=None, on_parse=None):
     """
@@ -55,8 +15,8 @@ def create_search_form(on_search=None, on_parse=None):
         on_parse: Функция обработки парсинга адреса
     """
     
-    # Инициализация клиента для парсинга адресов
-    postal_client = PostalClient()
+    # Инициализация сервиса для парсинга адресов
+    address_service = AddressService()
     
     # Поле для ввода полного адреса
     full_address_field = ft.TextField(
@@ -193,316 +153,63 @@ def create_search_form(on_search=None, on_parse=None):
         progress_text.visible = True
         e.page.update()
         
-        _oblast_name = None
-        _district_name = None
-        _selsovet_name = None
-        _city_type = None
-        _city_name = None
-        street_type_detected = None
-        _street_name = None
-        _building_number = None
-        
         try:
-            # Вызов микросервиса для парсинга адреса
-            # Предобработка: заменяем сокращения на полные слова
-            abbr_replace_dict = {
-                r"(?<!\w)г\.?(?!\w)": "город",
-                r"(?<!\w)обл\.?(?!\w)": "область",
-                r"(?<!\w)р-н(?!\w)": "район",
-                r"(?<!\w)рн(?!\w)": "район",
-                # r"(?<!\w)д\.?(?!\w)": "деревня",
-                r"(?<!\w)аг\.?(?!\w)": "агрогородок",
-                r"(?<!\w)гп\.?(?!\w)": "городской поселок",
-                r"(?<!\w)п\.?(?!\w)": "поселок",
-                r"(?<!\w)рп\.?(?!\w)": "рабочий поселок",
-                r"(?<!\w)кп\.?(?!\w)": "курортный поселок",
-                r"(?<!\w)х\.?(?!\w)": "хутор",
-                r"(?<!\w)пгт(?!\w)": "поселок городского типа",
-                r"(?<!\w)мкр\.?(?!\w)": "микрорайон",
-                r"(?<!\w)с/с(?!\w)": "сельсовет",
-                r"(?<!\w)с\.?(?!\w)": "село",
-                r"(?<!\w)ул\.?(?!\w)": "улица",
-                r"(?<!\w)пр-т(?!\w)": "проспект",
-                r"(?<!\w)пер\.?(?!\w)": "переулок",
-                # r"(?<!\w)дом(?!\w)": "дом",
-            }
-            preprocessed_address = address
-            for pattern, replacement in abbr_replace_dict.items():
-                preprocessed_address = re.sub(pattern, replacement, preprocessed_address, flags=re.IGNORECASE)
-                
-                
-            # Логирование предобработанного адреса
-            logger.debug(f"Предобработанный адрес: {preprocessed_address}")
-            _selsovet_name, address_no_selsovet = extract_selsovet(preprocessed_address)   
-            parsed_address = postal_client.parse_address(address_no_selsovet)
+            # Используем AddressService для парсинга адреса
+            parsed_data = address_service.parse_and_fill_address(address)
             
-            if parsed_address:
-                # Обработка области (state)
-                if "state" in parsed_address:
-                    # Очищаем значение от слов "область", "обл." и т.д.
-                    oblast_raw = parsed_address["state"]
-                    oblast_clean = re.sub(r"(?<!\w)(область|обл\.?)(?!\w)", "", oblast_raw, flags=re.IGNORECASE).strip()
-                    _oblast_name = oblast_clean
-                    logger.debug(f"Название области: {_oblast_name}")
-                    # Словарь соответствия областей и их значений в перечислении
-                    oblast_mapping = {
-                        "минск": "МИНСКАЯ",
-                        "брест": "БРЕСТСКАЯ",
-                        "витебск": "ВИТЕБСКАЯ",
-                        "гомель": "ГОМЕЛЬСКАЯ",
-                        "гродно": "ГРОДНЕНСКАЯ",
-                        "могилев": "МОГИЛЕВСКАЯ"
-                    }
+            if parsed_data:
+                # Словарь соответствия областей и их значений в перечислении
+                oblast_mapping = {
+                    "МИНСКАЯ": "МИНСКАЯ",
+                    "БРЕСТСКАЯ": "БРЕСТСКАЯ", 
+                    "ВИТЕБСКАЯ": "ВИТЕБСКАЯ",
+                    "ГОМЕЛЬСКАЯ": "ГОМЕЛЬСКАЯ",
+                    "ГРОДНЕНСКАЯ": "ГРОДНЕНСКАЯ",
+                    "МОГИЛЕВСКАЯ": "МОГИЛЕВСКАЯ"
+                }
                 
-                # Обработка района (state_district)
-                if "state_district" in parsed_address and not district_field.disabled:
-                    district_raw = parsed_address["state_district"]
-                    # Удаляем слова "район", "р-н", "рн"
-                    district_clean = re.sub(r"(?<!\w)(район|р-н|рн)\.?(?!\w)", "", district_raw, flags=re.IGNORECASE).strip()
-                    _district_name = district_clean
-                    logger.debug(f"Название района: {_district_name}")
-                # Обработка города (city)
-                city_raw=""
-                if "city" in parsed_address:
-                    city_raw = parsed_address["city"]
-                elif not city_raw and "house" in parsed_address:
-                    city_raw = parsed_address["house"]
-                if city_raw:    
-                    # Определяем тип населенного пункта по ключевым словам
-                    city_type_mapping = {
-                        r"(?<!\w)(город|г\.?)(?!\w)": "ГОРОД",
-                        r"(?<!\w)(агрогородок|аг\.?)(?!\w)": "АГРОГОРОДОК",
-                        r"(?<!\w)(деревня|д\.?)(?!\w)": "ДЕРЕВНЯ",
-                        r"(?<!\w)(поселок|п\.?)(?!\w)": "ПОСЕЛОК",
-                        r"(?<!\w)(городской поселок|гп\.?)(?!\w)": "ГОРОДСКОЙ ПОСЕЛОК",
-                        r"(?<!\w)(курортный поселок|кп\.?)(?!\w)": "КУРОРТНЫЙ ПОСЕЛОК",
-                        r"(?<!\w)(хутор|х\.?)(?!\w)": "ХУТОР",
-                        r"(?<!\w)(рабочий поселок|рп\.?)(?!\w)": "РАБОЧИЙ ПОСЕЛОК",
-                        r"(?<!\w)(село|с\.?)(?!\w)": "СЕЛО",
-                        r"(?<!\w)(сельсовет|с/с)(?!\w)": "СЕЛЬСОВЕТ"
-                    }
-                    
-                    city_type_detected = None
-                    for pattern, city_type in city_type_mapping.items():
-                        if re.search(pattern, city_raw, re.IGNORECASE):
-                            city_type_detected = city_type
-                            break
-                    
-                    # Если тип не определен, но город - один из областных центров
-                    if not city_type_detected:
-                        major_cities = ["минск", "брест", "витебск", "гомель", "гродно", "могилев"]
-                        if any(city in city_raw.lower() for city in major_cities):
-                            city_type_detected = "ГОРОД"
-                    
-                    # Если тип определен, устанавливаем его
-                    if city_type_detected:
-                        city_type_dropdown.value = city_type_detected
-                        _city_type = city_type_detected
-                        logger.debug(f"Тип города: {_city_type}")
-                    # Очищаем название города от типа
-                    for pattern in city_type_mapping.keys():
-                        city_raw = re.sub(pattern, "", city_raw, flags=re.IGNORECASE).strip()
-                    _city_name = city_raw
-                    logger.debug(f"Название города: {_city_name}")
-                                # Обработка номера дома (house_number)
-                if "house_number" in parsed_address:
-                    house_number = parsed_address["house_number"]
-                    # Удаляем слова "дом", "д.", "д"
-                    house_clean = re.sub(r"(?<!\w)(дом|д\.?)(?!\w)", "", house_number, flags=re.IGNORECASE).strip()
-                    _building_number = house_clean
-                    logger.debug(f"Номер дома: {_building_number}")
-                # Обработка улицы (road)
-                if "road" in parsed_address:
-                    road_raw = parsed_address["road"]
-                    logger.debug(f"Название улицы: {_street_name}")
-                    # Определяем тип улицы по ключевым словам
-                    street_type_mapping = {
-                        r"(?<!\w)(улица|ул\.?)(?!\w)": "УЛИЦА",
-                        r"(?<!\w)(проспект|пр-т|пр\.?)(?!\w)": "ПРОСПЕКТ",
-                        r"(?<!\w)(переулок|пер\.?)(?!\w)": "ПЕРЕУЛОК",
-                        r"(?<!\w)(проезд|пр-д)(?!\w)": "ПРОЕЗД",
-                        r"(?<!\w)(тракт)(?!\w)": "ТРАКТ",
-                        r"(?<!\w)(бульвар|б-р)(?!\w)": "БУЛЬВАР",
-                        r"(?<!\w)(тупик)(?!\w)": "ТУПИК",
-                        r"(?<!\w)(площадь|пл\.?)(?!\w)": "ПЛОЩАДЬ",
-                        r"(?<!\w)(кольцо)(?!\w)": "КОЛЬЦО",
-                        r"(?<!\w)(набережная|наб\.?)(?!\w)": "НАБЕРЕЖНАЯ",
-                        r"(?<!\w)(шоссе|ш\.?)(?!\w)": "ШОССЕ",
-                        r"(?<!\w)(микрорайон|мкр\.?)(?!\w)": "МИКРОРАЙОН"
-                    }
-                    
-                    street_type_detected = ""
-                    for pattern, street_type in street_type_mapping.items():
-                        if re.search(pattern, road_raw, re.IGNORECASE):
-                            street_type_detected = street_type
-                            break
-                    
-                    # Очищаем название улицы от типа
-                    for pattern in street_type_mapping.keys():
-                        road_raw = re.sub(pattern, "", road_raw, flags=re.IGNORECASE).strip()
-                        _street_name = road_raw                   
-            else:
-                logger.warning("Нет ответа от сервиса парсинга")
-            street_book_file = settings.data.street_book_file
-            temp = AddressProcessor().build_address(
-                region = _oblast_name,
-                district = _district_name,
-                sovet = _selsovet_name,
-                city_type = _city_type,
-                city_name = _city_name,
-                street_type = street_type_detected,
-                street_name = _street_name,
-                spec_mode=True
-            )
-            logger.debug(f"Временный адрес: область={_oblast_name}, район={_district_name}, сельсовет={_selsovet_name}, тип_города={_city_type}, город={_city_name}, тип_улицы={street_type_detected}, улица={_street_name}")
-            corrected = correct_street_name(temp, street_book_file,
-                                    threshold=80) + " " + parsed_address.get("house_number", "")
-            
-            logger.debug(f"Исправленный адрес: {corrected}")
-            _selsovet_name, address_no_selsovet = extract_selsovet(corrected)   
-            parsed_address = postal_client.parse_address(address_no_selsovet)
-            if parsed_address:
-                # Обработка области (state)
-                if "state" in parsed_address:
-                    # Очищаем значение от слов "область", "обл." и т.д.
-                    oblast_raw = parsed_address["state"]
-                    oblast_clean = re.sub(r"(?<!\w)(область|обл\.?)(?!\w)", "", oblast_raw, flags=re.IGNORECASE).strip()
-                    _oblast_name = oblast_clean
-                    # Словарь соответствия областей и их значений в перечислении
-                    oblast_mapping = {
-                        "минск": "МИНСКАЯ",
-                        "брест": "БРЕСТСКАЯ",
-                        "витебск": "ВИТЕБСКАЯ",
-                        "гомель": "ГОМЕЛЬСКАЯ",
-                        "гродно": "ГРОДНЕНСКАЯ",
-                        "могилев": "МОГИЛЕВСКАЯ"
-                    }
-                    
-                    # Определяем область по ключевым словам
-                    for key, value in oblast_mapping.items():
-                        if key in oblast_clean.lower():
-                            region_dropdown.value = value
-                            on_region_change(e)  # Активируем поля района и сельсовета
-                            break
+                # Обработка области
+                if "region" in parsed_data and parsed_data["region"]:
+                    region_value = parsed_data["region"]
+                    if region_value in oblast_mapping:
+                        region_dropdown.value = region_value
+                        on_region_change(e)  # Активируем поля района и сельсовета
                 
-                # Обработка района (state_district)
-                if "state_district" in parsed_address and not district_field.disabled:
-                    district_raw = parsed_address["state_district"]
-                    # Удаляем слова "район", "р-н", "рн"
-                    district_clean = re.sub(r"(?<!\w)(район|р-н|рн)\.?(?!\w)", "", district_raw, flags=re.IGNORECASE).strip()
-                    district_field.value = district_clean.title()  # Первая буква заглавная
-                    _district_name = district_clean
+                # Обработка района
+                if "district" in parsed_data and parsed_data["district"] and not district_field.disabled:
+                    district_field.value = parsed_data["district"].title()
                 
-                                # Обработка города (city)
-                city_raw=""
-                if "city" in parsed_address:
-                    city_raw = parsed_address["city"]
-                elif not city_raw and "house" in parsed_address:
-                    city_raw = parsed_address["house"]
-                if city_raw:
-                    city_type_mapping = {
-                        r"(?<!\w)(город|г\.?)(?!\w)": "ГОРОД",
-                        r"(?<!\w)(агрогородок|аг\.?)(?!\w)": "АГРОГОРОДОК",
-                        r"(?<!\w)(деревня|д\.?)(?!\w)": "ДЕРЕВНЯ",
-                        r"(?<!\w)(поселок|п\.?)(?!\w)": "ПОСЕЛОК",
-                        r"(?<!\w)(городской поселок|гп\.?)(?!\w)": "ГОРОДСКОЙ ПОСЕЛОК",
-                        r"(?<!\w)(курортный поселок|кп\.?)(?!\w)": "КУРОРТНЫЙ ПОСЕЛОК",
-                        r"(?<!\w)(хутор|х\.?)(?!\w)": "ХУТОР",
-                        r"(?<!\w)(рабочий поселок|рп\.?)(?!\w)": "РАБОЧИЙ ПОСЕЛОК",
-                        r"(?<!\w)(село|с\.?)(?!\w)": "СЕЛО",
-                        r"(?<!\w)(сельсовет|с/с)(?!\w)": "СЕЛЬСОВЕТ"
-                    }
-                    
-                    city_type_detected = None
-                    for pattern, city_type in city_type_mapping.items():
-                        if re.search(pattern, city_raw, re.IGNORECASE):
-                            city_type_detected = city_type
-                            break
-                    
-                    # Если тип не определен, но город - один из областных центров
-                    if not city_type_detected:
-                        major_cities = ["минск", "брест", "витебск", "гомель", "гродно", "могилев"]
-                        if any(city in city_raw.lower() for city in major_cities):
-                            city_type_detected = "ГОРОД"
-                    
-                    # Если тип определен, устанавливаем его
-                    if city_type_detected:
-                        city_type_dropdown.value = city_type_detected
-                        _city_type = city_type_detected
-                        on_city_type_change(e)  # Активируем поле города
-                    else:
-                        # Если тип не определен, но есть название города, используем "ДРУГОЕ"
-                        city_type_dropdown.value = "ДРУГОЕ" if hasattr(CityType, "OTHER") else "ГОРОД"
-                        on_city_type_change(e)
-                    
-                    # Очищаем название города от типа
-                    for pattern in city_type_mapping.keys():
-                        city_raw = re.sub(pattern, "", city_raw, flags=re.IGNORECASE).strip()
-                        _city_name = city_raw
-                    
-                    # Устанавливаем название города
-                    if not city_field.disabled:
-                        city_field.value = city_raw.title()  # Первая буква заглавная
+                # Обработка сельсовета
+                if "sovet" in parsed_data and parsed_data["sovet"] and not sovet_field.disabled:
+                    sovet_field.value = parsed_data["sovet"].title()
                 
-                # Обработка улицы (road)
-                if "road" in parsed_address:
-                    road_raw = parsed_address["road"]
-                    
-                    # Определяем тип улицы по ключевым словам
-                    street_type_mapping = {
-                        r"(?<!\w)(улица|ул\.?)(?!\w)": "УЛИЦА",
-                        r"(?<!\w)(проспект|пр-т|пр\.?)(?!\w)": "ПРОСПЕКТ",
-                        r"(?<!\w)(переулок|пер\.?)(?!\w)": "ПЕРЕУЛОК",
-                        r"(?<!\w)(проезд|пр-д)(?!\w)": "ПРОЕЗД",
-                        r"(?<!\w)(тракт)(?!\w)": "ТРАКТ",
-                        r"(?<!\w)(бульвар|б-р)(?!\w)": "БУЛЬВАР",
-                        r"(?<!\w)(тупик)(?!\w)": "ТУПИК",
-                        r"(?<!\w)(площадь|пл\.?)(?!\w)": "ПЛОЩАДЬ",
-                        r"(?<!\w)(кольцо)(?!\w)": "КОЛЬЦО",
-                        r"(?<!\w)(набережная|наб\.?)(?!\w)": "НАБЕРЕЖНАЯ",
-                        r"(?<!\w)(шоссе|ш\.?)(?!\w)": "ШОССЕ",
-                        r"(?<!\w)(микрорайон|мкр\.?)(?!\w)": "МИКРОРАЙОН"
-                    }
-                    
-                    street_type_detected = ""
-                    for pattern, street_type in street_type_mapping.items():
-                        if re.search(pattern, road_raw, re.IGNORECASE):
-                            street_type_detected = street_type
-                            break
-                    
-                    # Если тип определен, устанавливаем его
-                    if street_type_detected:
-                        street_type_dropdown.value = street_type_detected
-                        on_street_type_change(e)  # Активируем поле улицы
-                    else:
-                        # Если тип не определен, но есть название улицы, используем "ДРУГОЕ"
-                        street_type_dropdown.value = "ДРУГОЕ" if hasattr(StreetType, "OTHER") else "УЛИЦА"
-                        on_street_type_change(e)
-                    
-                    # Очищаем название улицы от типа
-                    for pattern in street_type_mapping.keys():
-                        road_raw = re.sub(pattern, "", road_raw, flags=re.IGNORECASE).strip()
-                        _street_name = road_raw
-                    # Устанавливаем название улицы
-                    if not street_field.disabled:
-                        if not street_type_detected:
-                            street_type_dropdown.value = street_type_detected
-                            on_street_type_change(e)
-                        street_field.value = _street_name.lower().capitalize()  # Первая буква заглавная
+                # Обработка типа города
+                if "city_type" in parsed_data and parsed_data["city_type"]:
+                    city_type_dropdown.value = parsed_data["city_type"]
+                    on_city_type_change(e)  # Активируем поле города
                 
-                # Обработка номера дома (house_number)
-                if "house_number" in parsed_address:
-                    house_number = parsed_address["house_number"]
-                    # Удаляем слова "дом", "д.", "д"
-                    house_clean = re.sub(r"(?<!\w)(дом|д\.?)(?!\w)", "", house_number, flags=re.IGNORECASE).strip()
-                    house_field.value = house_clean
+                # Обработка названия города
+                if "city_name" in parsed_data and parsed_data["city_name"] and not city_field.disabled:
+                    city_field.value = parsed_data["city_name"].title()
+                
+                # Обработка типа улицы
+                if "street_type" in parsed_data and parsed_data["street_type"]:
+                    street_type_dropdown.value = parsed_data["street_type"]
+                    on_street_type_change(e)  # Активируем поле улицы
+                
+                # Обработка названия улицы
+                if "street_name" in parsed_data and parsed_data["street_name"] and not street_field.disabled:
+                    street_field.value = parsed_data["street_name"].title()
+                
+                # Обработка номера дома
+                if "building" in parsed_data and parsed_data["building"]:
+                    house_field.value = parsed_data["building"]
                 
                 e.page.add(ft.SnackBar(content=ft.Text("Адрес успешно разобран")))
             else:
                 e.page.add(ft.SnackBar(content=ft.Text("Не удалось разобрать адрес")))
         
         except Exception as ex:
-            raise ex
             logger.error(f"Исключение при разборе адреса: {ex}")
             e.page.add(ft.SnackBar(content=ft.Text(f"Ошибка при разборе адреса: {str(ex)}")))
         

@@ -53,20 +53,22 @@ class AddressViewModel(BaseViewModel):
     
     def validate_search_params(self) -> bool:
         """
-        Валидация параметров поиска
+        Валидация параметров поиска через AddressService
         
         Returns:
             bool: True, если параметры валидны, иначе False
         """
-        # Проверка наличия минимально необходимых данных для поиска
-        has_city = (self.city_type != CityType.NONE.value and 
-                   self.city_name and self.city_name.strip())
-        has_street = (self.street_type != StreetType.NONE.value and 
-                     self.street_name and self.street_name.strip())
-        has_region = self.region != RegionType.NONE.value
-        has_district = self.district and self.district.strip()
+        is_valid = self.address_service.validate_search_params(
+            region=self.region,
+            district=self.district,
+            sovet=self.sovet,
+            city_type=self.city_type,
+            city_name=self.city_name,
+            street_type=self.street_type,
+            street_name=self.street_name
+        )
         
-        if not (has_city or has_street or has_region or has_district):
+        if not is_valid:
             self.error_message = "Укажите хотя бы один параметр для поиска"
             self.notify("error_message")
             return False
@@ -170,17 +172,12 @@ class AddressViewModel(BaseViewModel):
     
     def get_search_url(self) -> str:
         """
-        Получение URL для поиска на сайте Белпочты
+        Получение URL для поиска на сайте Белпочты через AddressService
         
         Returns:
             str: URL для поиска
         """
-        if not self.current_search_query:
-            return ""
-        
-        from urllib.parse import quote
-        encoded_query = quote(self.current_search_query)
-        return f"https://www.belpost.by/Uznatpochtovyykod28indek?search={encoded_query}"
+        return self.address_service.get_search_url(self.current_search_query)
     
     def close(self) -> None:
         """

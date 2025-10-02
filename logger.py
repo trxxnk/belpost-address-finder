@@ -18,7 +18,7 @@ class EmojiFormatter(logging.Formatter):
     EMOJI_MAP = {
         'DEBUG': '🐛',
         'INFO': 'ℹ️ ',
-        'WARNING': '⚠️',
+        'WARNING': '⚠️ ',
         'ERROR': '❌',
         'CRITICAL': '🔥'
     }
