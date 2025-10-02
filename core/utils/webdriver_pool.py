@@ -14,11 +14,11 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
 from config import settings
-from logger import get_logger
+from logger import get_configured_logger
 from exceptions import WebDriverException
 
 # Создание логгера для модуля
-logger = get_logger("addr_corr.webdriver_pool", log_file="logs/webdriver.log")
+logger = get_configured_logger("core.utils.webdriver_pool", "webdriver.log")
 
 
 class WebDriverPool:

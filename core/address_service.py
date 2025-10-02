@@ -6,6 +6,10 @@ from models.dropdown_values import RegionType, StreetType, CityType
 from data.models import get_database_engine
 from core.belpost_service import BelpostService
 from core.address_processor import AddressProcessor
+from logger import get_configured_logger
+
+# Создание логгера для модуля
+logger = get_configured_logger("core.address_service")
 
 class AddressService:
     """
@@ -75,8 +79,6 @@ class AddressService:
             return results
             
         except Exception as e:
-            from logger import get_logger
-            logger = get_logger("addr_corr.services.address_service")
             logger.error(f"Ошибка поиска: {e}")
             return []
     

@@ -1,5 +1,9 @@
 from rapidfuzz import fuzz, process
 from typing import Optional
+from logger import get_configured_logger
+
+# Создание логгера для модуля
+logger = get_configured_logger("core.street_corrector")
 
 def correct_street_name(input_street: str, correct_streets_file: str, threshold: int = 80) -> str:
     """
@@ -26,23 +30,15 @@ def correct_street_name(input_street: str, correct_streets_file: str, threshold:
         
         # Если совпадение выше порога, возвращаем исправленное название
         if score >= threshold:
-            from logger import get_logger
-            logger = get_logger("addr_corr.services.street_corrector")
             logger.debug(f"Исправление улицы: '{input_street}' -> '{best_match}' (score: {score}%)")
             return best_match.lower().capitalize()
         else:
-            from logger import get_logger
-            logger = get_logger("addr_corr.services.street_corrector")
             logger.debug(f"Нет совпадения: '{input_street}' -> '{best_match}' (score: {score}%)")
             return input_street
             
     except FileNotFoundError:
-        from logger import get_logger
-        logger = get_logger("addr_corr.services.street_corrector")
         logger.error(f"Файл {correct_streets_file} не найден")
         return input_street
     except Exception as e:
-        from logger import get_logger
-        logger = get_logger("addr_corr.services.street_corrector")
         logger.error(f"Произошла ошибка: {e}")
         return input_street

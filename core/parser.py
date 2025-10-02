@@ -16,11 +16,11 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 
 from core.utils.webdriver_pool import get_driver_pool
 from config import settings
-from logger import get_logger
+from logger import get_configured_logger
 from exceptions import ParsingException, NetworkException, WebDriverException
 
 # Создание логгера для модуля
-logger = get_logger("addr_corr.parser", log_file="logs/parser.log")
+logger = get_configured_logger("core.parser", "parser.log")
 
 
 def search_postal_code(driver: webdriver.Chrome, address: str) -> List[List[str]]:

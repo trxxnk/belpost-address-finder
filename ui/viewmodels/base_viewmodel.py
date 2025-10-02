@@ -4,6 +4,10 @@
 """
 
 from typing import Dict, Any, Callable, List
+from logger import get_configured_logger
+
+# Создание логгера для модуля
+logger = get_configured_logger("ui.viewmodels.base_viewmodel")
 
 
 class BaseViewModel:
@@ -43,8 +47,6 @@ class BaseViewModel:
                     callback()
                 except Exception as e:
                     # Логирование ошибки в колбэке, но не прерывание выполнения
-                    from logger import get_logger
-                    logger = get_logger("addr_corr.viewmodels.base")
                     logger.error(f"Ошибка в колбэке для свойства '{property_name}': {e}")
     
     def unregister_callback(self, property_name: str, callback: Callable) -> None:

@@ -2,10 +2,10 @@ import requests
 from typing import Dict, Any, Optional
 import json
 import urllib.parse
-from logger import get_logger
+from logger import get_configured_logger
 
 # Создание логгера для модуля
-logger = get_logger("addr_corr.services.postal_client")
+logger = get_configured_logger("core.utils.postal_client")
 
 class PostalClient:
     """Клиент для взаимодействия с микросервисом парсинга адресов"""

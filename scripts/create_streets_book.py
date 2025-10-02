@@ -5,10 +5,12 @@ from sqlalchemy.orm import Session
 
 from db_config import db_config 
 from models import Address
+from logger import get_configured_logger
+
+# Создание логгера для модуля
+logger = get_configured_logger("addr_corr.db.create_streets_book")
 
 def create_streets_book(output_file: str):
-    from logger import get_logger
-    logger = get_logger("addr_corr.db.create_streets_book")
     
     logger.info("Подключение к БД...")
     engine = create_engine(db_config.MYSQL_URL)

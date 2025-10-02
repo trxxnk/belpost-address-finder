@@ -3,30 +3,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.engine import URL, Engine, create_engine
 from enum import Enum as PyEnum
 import os
-from dotenv import load_dotenv
-
-def get_database_url(str_format: bool = False) -> URL|str:
-    load_dotenv()
-    MYSQL_USER = os.getenv("MYSQL_USER")
-    MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
-    MYSQL_HOST = os.getenv("MYSQL_HOST")
-    MYSQL_PORT = os.getenv("MYSQL_PORT")
-    MYSQL_DB = os.getenv("MYSQL_DB")
-    if str_format:
-        return f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
-    url_db = URL.create(
-        drivername="mysql+mysqlconnector",
-        username=MYSQL_USER,
-        password=MYSQL_PASSWORD,
-        host=MYSQL_HOST,
-        port=MYSQL_PORT,
-        database=MYSQL_DB,
-    )
-    return url_db
+from config import settings
 
 
 def get_database_engine(echo: bool = True) -> Engine:
-    url_db = get_database_url()
+    url_db = settings.db.connection_string
     engine = create_engine(url_db, echo=echo)
     return engine
 

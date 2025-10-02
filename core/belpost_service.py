@@ -7,11 +7,11 @@ from typing import List, Dict, Any, Optional, Callable
 from core.utils.webdriver_pool import get_driver_pool
 from core.parser import search_postal_code
 from config import settings
-from logger import get_logger
+from logger import get_configured_logger
 from exceptions import NetworkException, ParsingException, BelpostServiceException, WebDriverException
 
 # Создание логгера для модуля
-logger = get_logger("addr_corr.belpost_service", log_file="logs/belpost.log")
+logger = get_configured_logger("core.belpost_service", "belpost.log")
 
 
 class BelpostService:

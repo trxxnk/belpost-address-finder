@@ -7,7 +7,7 @@ from typing import List, Optional, Callable, Dict, Any
 from models.search_result import SearchResult
 from models.dropdown_values import RegionType, CityType, StreetType
 from core.address_service import AddressService
-from logger import get_logger
+from logger import get_configured_logger
 from exceptions import BelpostServiceException, NetworkException, ParsingException, ValidationException
 from .base_viewmodel import BaseViewModel
 
@@ -27,7 +27,7 @@ class AddressViewModel(BaseViewModel):
         """
         super().__init__()
         self.address_service = address_service
-        self.logger = get_logger("addr_corr.viewmodels.address")
+        self.logger = get_configured_logger("ui.viewmodels.address_viewmodel")
         
         # Состояние поиска
         self.results: List[SearchResult] = []

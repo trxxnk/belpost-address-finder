@@ -1,6 +1,5 @@
 """
 Модуль централизованной конфигурации приложения.
-Использует простую реализацию без зависимости от Pydantic.
 """
 
 import os
@@ -10,15 +9,20 @@ from dotenv import load_dotenv
 # Загрузка переменных окружения из .env файла
 load_dotenv()
 
+class DataConfig:
+    """Настройки данных"""
+    def __init__(self):
+        self.abbrs_file = os.getenv("ABBREVIATIONS_JSON")
+        self.street_book_file = os.getenv("STREET_BOOK")
 
 class DatabaseConfig:
     """Настройки базы данных"""
     def __init__(self):
-        self.user = os.getenv("MYSQL_USER", "root")
-        self.password = os.getenv("MYSQL_PASSWORD", "")
-        self.host = os.getenv("MYSQL_HOST", "localhost")
-        self.port = os.getenv("MYSQL_PORT", "3306")
-        self.database = os.getenv("MYSQL_DB", "addr_corr")
+        self.user = os.getenv("MYSQL_USER")
+        self.password = os.getenv("MYSQL_PASSWORD")
+        self.host = os.getenv("MYSQL_HOST")
+        self.port = os.getenv("MYSQL_PORT")
+        self.database = os.getenv("MYSQL_DB")
         self.echo = os.getenv("MYSQL_ECHO", "false").lower() == "true"
     
     @property
@@ -30,8 +34,8 @@ class DatabaseConfig:
 class BelpostConfig:
     """Настройки для работы с Белпочтой"""
     def __init__(self):
-        self.base_url = os.getenv("BELPOST_BASE_URL", "https://www.belpost.by")
-        self.search_endpoint = os.getenv("BELPOST_SEARCH_ENDPOINT", "/Uznatpochtovyykod28indek")
+        self.base_url = os.getenv("BELPOST_BASE_URL")
+        self.search_endpoint = os.getenv("BELPOST_SEARCH_ENDPOINT")
         self.timeout = int(os.getenv("BELPOST_TIMEOUT", "30"))
         self.max_results = int(os.getenv("BELPOST_MAX_RESULTS", "10"))
     
@@ -69,19 +73,20 @@ class SeleniumConfig:
 class LoggingConfig:
     """Настройки логирования"""
     def __init__(self):
-        self.level = os.getenv("LOG_LEVEL", "INFO").upper()
-        self.file_path = os.getenv("LOG_FILE_PATH", "logs/app.log")
+        self.log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+        self.log_file = os.getenv("LOG_FILE_PATH", "logs/app.log")
         self.console = os.getenv("LOG_CONSOLE", "true").lower() == "true"
-        self.format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        self.log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         self.max_bytes = int(os.getenv("LOG_MAX_BYTES", "10485760"))  # 10 MB
         self.backup_count = int(os.getenv("LOG_BACKUP_COUNT", "5"))
+        self.use_emoji = os.getenv("LOG_USE_EMOJI", "true").lower() == "true"
         
         # Проверка уровня логирования
         allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        if self.level not in allowed_levels:
+        if self.log_level not in allowed_levels:
             import logging
-            logging.warning(f"Неверный уровень логирования: {self.level}. Используется INFO.")
-            self.level = "INFO"
+            logging.warning(f"Неверный уровень логирования: {self.log_level}. Используется INFO.")
+            self.log_level = "INFO"
 
 
 class UIConfig:
@@ -116,12 +121,12 @@ class AppConfig:
             self.environment = "development"
         
         # Вложенные настройки
+        self.data = DataConfig()
         self.db = DatabaseConfig()
         self.belpost = BelpostConfig()
         self.selenium = SeleniumConfig()
         self.logging = LoggingConfig()
         self.ui = UIConfig()
-
 
 # Создание глобального экземпляра настроек
 settings = AppConfig()

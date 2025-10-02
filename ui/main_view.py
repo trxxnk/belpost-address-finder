@@ -13,10 +13,10 @@ from ui.viewmodels.address_viewmodel import AddressViewModel
 from ui.assets.styles import PADDING, COLORS
 from ui.components import create_header, create_search_form, create_result_card
 from models.dropdown_values import RegionType, CityType, StreetType
-from logger import get_logger
+from logger import get_configured_logger
 
 # Создание логгера для модуля
-logger = get_logger("addr_corr.views.main")
+logger = get_configured_logger("ui.main_view")
 
 
 class MainView:

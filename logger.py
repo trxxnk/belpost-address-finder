@@ -9,6 +9,48 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Optional, Dict, Any
+from config import settings
+
+
+class EmojiFormatter(logging.Formatter):
+    """
+    Кастомный форматтер для добавления эмодзи к уровням логирования
+    """
+    
+    # Словарь соответствия уровней логирования и эмодзи
+    EMOJI_MAP = {
+        'DEBUG': '🐛',
+        'INFO': 'ℹ️ ',
+        'WARNING': '⚠️',
+        'ERROR': '❌',
+        'CRITICAL': '🔥'
+    }
+    
+    def __init__(self, fmt=None, datefmt=None, style='%', use_emoji=True):
+        """
+        Инициализация форматтера
+        
+        Args:
+            fmt: Формат сообщения
+            datefmt: Формат даты
+            style: Стиль форматирования
+            use_emoji: Использовать ли эмодзи (по умолчанию True)
+        """
+        super().__init__(fmt, datefmt, style)
+        self.use_emoji = use_emoji
+    
+    def format(self, record):
+        # Создаем копию записи, чтобы не изменять оригинал
+        record_copy = logging.makeLogRecord(record.__dict__)
+        
+        # Добавляем эмодзи к названию уровня, если включено
+        if self.use_emoji:
+            emoji = self.EMOJI_MAP.get(record_copy.levelname, '')
+            if emoji:
+                record_copy.levelname = f"{emoji} {record_copy.levelname}"
+        
+        # Вызываем стандартное форматирование
+        return super().format(record_copy)
 
 
 def setup_logger(
@@ -20,6 +62,7 @@ def setup_logger(
     backup_count: int = 5,
     console: bool = True,
     propagate: bool = False,
+    use_emoji: bool = True,
 ) -> logging.Logger:
     """
     Настройка логгера с выводом в файл и консоль
@@ -33,6 +76,7 @@ def setup_logger(
         backup_count: Количество сохраняемых файлов лога
         console: Включить вывод в консоль
         propagate: Передавать ли записи родительским логгерам
+        use_emoji: Использовать эмодзи в логах
 
     Returns:
         logging.Logger: Настроенный логгер
@@ -52,7 +96,7 @@ def setup_logger(
     logger.propagate = propagate
 
     # Создание форматтера
-    formatter = logging.Formatter(log_format)
+    formatter = EmojiFormatter(log_format, use_emoji=use_emoji)
 
     # Добавление обработчика вывода в консоль
     if console:
@@ -90,6 +134,7 @@ def setup_daily_logger(
     backup_count: int = 30,
     console: bool = True,
     propagate: bool = False,
+    use_emoji: bool = True,
 ) -> logging.Logger:
     """
     Настройка логгера с ежедневной ротацией файлов
@@ -102,6 +147,7 @@ def setup_daily_logger(
         backup_count: Количество сохраняемых файлов лога
         console: Включить вывод в консоль
         propagate: Передавать ли записи родительским логгерам
+        use_emoji: Использовать эмодзи в логах
 
     Returns:
         logging.Logger: Настроенный логгер
@@ -121,7 +167,7 @@ def setup_daily_logger(
     logger.propagate = propagate
 
     # Создание форматтера
-    formatter = logging.Formatter(log_format)
+    formatter = EmojiFormatter(log_format, use_emoji=use_emoji)
 
     # Добавление обработчика вывода в консоль
     if console:
@@ -173,65 +219,135 @@ def get_logger(name: str, **kwargs: Any) -> logging.Logger:
     return _loggers[name]
 
 
-# Создание основных логгеров приложения
-def create_app_loggers(
-    app_name: str = "addr_corr",
-    log_dir: str = "logs",
-    log_level: str = "INFO",
-    console: bool = True,
-) -> Dict[str, logging.Logger]:
+def get_configured_logger(name: str, log_file_name: Optional[str] = None) -> logging.Logger:
     """
-    Создание основных логгеров приложения
-
+    Получение логгера с настройками из config.py.
+    
     Args:
-        app_name: Имя приложения
-        log_dir: Директория для файлов логов
-        log_level: Уровень логирования
-        console: Включить вывод в консоль
+        name: Имя логгера
+        log_file_name: Имя файла лога (например, "belpost.log"). 
+                      Если не указано, логирование только в консоль.
+    
+    Returns:
+        logging.Logger: Настроенный логгер с параметрами из конфигурации
+    """
+    log_config = settings.logging
+    
+    # Определение пути к файлу лога
+    log_file = None
+    if log_file_name:
+        log_dir = os.path.dirname(log_config.log_file)
+        if log_dir:
+            log_file = os.path.join(log_dir, log_file_name)
+    
+    return setup_logger(
+        name=name,
+        log_level=log_config.log_level,
+        log_file=log_file,
+        log_format=log_config.log_format,
+        max_bytes=log_config.max_bytes,
+        backup_count=log_config.backup_count,
+        console=log_config.console,
+        use_emoji=log_config.use_emoji
+    )
+
+
+# Создание основных логгеров приложения с настройками из конфигурации
+def create_app_loggers() -> Dict[str, logging.Logger]:
+    """
+    Создание основных логгеров приложения с настройками из config.py
 
     Returns:
         Dict[str, logging.Logger]: Словарь с логгерами
     """
+    log_config = settings.logging
+    app_config = settings
+    
+    # Получение директории для логов из пути к файлу лога
+    log_dir = os.path.dirname(log_config.log_file)
+    
     # Создание директории для логов
-    if not os.path.exists(log_dir):
+    if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir, exist_ok=True)
 
     # Создание логгеров для разных компонентов
     loggers = {
         "app": setup_logger(
-            f"{app_name}.app",
-            log_level=log_level,
-            log_file=os.path.join(log_dir, "app.log"),
-            console=console,
+            f"{app_config.app_name}.app",
+            log_level=log_config.log_level,
+            log_file=os.path.join(log_dir, "app.log") if log_dir else None,
+            log_format=log_config.log_format,
+            max_bytes=log_config.max_bytes,
+            backup_count=log_config.backup_count,
+            console=log_config.console,
+            use_emoji=log_config.use_emoji,
         ),
         "parser": setup_logger(
-            f"{app_name}.parser",
-            log_level=log_level,
-            log_file=os.path.join(log_dir, "parser.log"),
-            console=console,
+            f"{app_config.app_name}.parser",
+            log_level=log_config.log_level,
+            log_file=os.path.join(log_dir, "parser.log") if log_dir else None,
+            log_format=log_config.log_format,
+            max_bytes=log_config.max_bytes,
+            backup_count=log_config.backup_count,
+            console=log_config.console,
+            use_emoji=log_config.use_emoji,
         ),
-        "db": setup_logger(
-            f"{app_name}.db",
-            log_level=log_level,
-            log_file=os.path.join(log_dir, "db.log"),
-            console=console,
+        "belpost": setup_logger(
+            f"{app_config.app_name}.belpost",
+            log_level=log_config.log_level,
+            log_file=os.path.join(log_dir, "belpost.log") if log_dir else None,
+            log_format=log_config.log_format,
+            max_bytes=log_config.max_bytes,
+            backup_count=log_config.backup_count,
+            console=log_config.console,
+            use_emoji=log_config.use_emoji,
         ),
-        "api": setup_logger(
-            f"{app_name}.api",
-            log_level=log_level,
-            log_file=os.path.join(log_dir, "api.log"),
-            console=console,
+        "webdriver": setup_logger(
+            f"{app_config.app_name}.webdriver",
+            log_level=log_config.log_level,
+            log_file=os.path.join(log_dir, "webdriver.log") if log_dir else None,
+            log_format=log_config.log_format,
+            max_bytes=log_config.max_bytes,
+            backup_count=log_config.backup_count,
+            console=log_config.console,
+            use_emoji=log_config.use_emoji,
         ),
         "ui": setup_logger(
-            f"{app_name}.ui",
-            log_level=log_level,
-            log_file=os.path.join(log_dir, "ui.log"),
-            console=console,
+            f"{app_config.app_name}.ui",
+            log_level=log_config.log_level,
+            log_file=os.path.join(log_dir, "ui.log") if log_dir else None,
+            log_format=log_config.log_format,
+            max_bytes=log_config.max_bytes,
+            backup_count=log_config.backup_count,
+            console=log_config.console,
+            use_emoji=log_config.use_emoji,
         ),
     }
 
     return loggers
 
 
+# Создание основного логгера приложения с настройками из конфигурации
+def create_main_app_logger() -> logging.Logger:
+    """
+    Создание основного логгера приложения с настройками из config.py
+    
+    Returns:
+        logging.Logger: Настроенный логгер приложения
+    """
+    log_config = settings.logging
+    
+    return setup_logger(
+        name="addr_corr",
+        log_level=log_config.log_level,
+        log_file=log_config.log_file,
+        log_format=log_config.log_format,
+        max_bytes=log_config.max_bytes,
+        backup_count=log_config.backup_count,
+        console=log_config.console,
+        use_emoji=log_config.use_emoji
+    )
+
+
 # Создание основного логгера приложения
-app_logger = get_logger("addr_corr", log_file="logs/app.log")
+app_logger = create_main_app_logger()

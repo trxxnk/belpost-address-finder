@@ -6,6 +6,11 @@ from core.utils.postal_client import PostalClient
 from core.street_corrector import correct_street_name
 
 from core.address_processor import AddressProcessor
+from config import settings
+from logger import get_configured_logger
+
+# Создание логгера для модуля
+logger = get_configured_logger("addr_corr.views.components.search_form")
 
 def extract_selsovet(address: str):
     """
@@ -228,8 +233,6 @@ def create_search_form(on_search=None, on_parse=None):
                 
                 
             # Логирование предобработанного адреса
-            from logger import get_logger
-            logger = get_logger("addr_corr.views.components.search_form")
             logger.debug(f"Предобработанный адрес: {preprocessed_address}")
             _selsovet_name, address_no_selsovet = extract_selsovet(preprocessed_address)   
             parsed_address = postal_client.parse_address(address_no_selsovet)
@@ -341,7 +344,7 @@ def create_search_form(on_search=None, on_parse=None):
                         _street_name = road_raw                   
             else:
                 logger.warning("Нет ответа от сервиса парсинга")
-            street_book_file = "data/repositories/private/streets_book.txt"
+            street_book_file = settings.data.street_book_file
             temp = AddressProcessor().build_address(
                 region = _oblast_name,
                 district = _district_name,

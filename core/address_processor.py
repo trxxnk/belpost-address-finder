@@ -7,6 +7,12 @@ from rapidfuzz import fuzz
 from models.search_result import SearchResult
 from models.dropdown_values import RegionType, StreetType, CityType
 
+from config import settings
+from logger import get_configured_logger
+
+# Создание логгера для модуля
+logger = get_configured_logger("core.address_processor")
+
 class AddressProcessor:
     """
     Сервис для обработки и фильтрации результатов поиска адресов
@@ -33,16 +39,15 @@ class AddressProcessor:
     def _load_abbreviations(self) -> Dict[str, str]:
         """Загрузка словаря аббревиатур"""
         try:
-            with open('data/repositories/common/grouped_abbrs.json', 'r', encoding='utf-8') as f:
-                grouped_dict = json.load(f)
-                abbrs_dict = {}
+            file_path = settings.data.abbrs_file
+            with open(file_path, 'r', encoding='utf-8') as f:
+                grouped_dict: dict[str, list[str]] = json.load(f)
+                abbrs_dict: dict[str, str] = {}
                 for fullname, abbrs in grouped_dict.items():
                     for abbr in abbrs:
                         abbrs_dict[abbr] = fullname
                 return abbrs_dict
         except Exception as e:
-            from logger import get_logger
-            logger = get_logger("addr_corr.services.address_processor")
             logger.error(f"Ошибка загрузки аббревиатур: {e}")
             return {}
     
@@ -270,7 +275,5 @@ class AddressProcessor:
             return results[:10]  # Возвращаем топ-10 результатов
             
         except Exception as e:
-            from logger import get_logger
-            logger = get_logger("addr_corr.services.address_processor")
             logger.error(f"Ошибка обработки результатов: {e}")
             return []
