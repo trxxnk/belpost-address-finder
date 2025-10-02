@@ -9,7 +9,6 @@ from core.address_processor import AddressProcessor
 from config import settings
 from logger import get_configured_logger
 
-# Создание логгера для модуля
 logger = get_configured_logger("addr_corr.views.components.search_form")
 
 def extract_selsovet(address: str):
@@ -62,7 +61,7 @@ def create_search_form(on_search=None, on_parse=None):
     # Поле для ввода полного адреса
     full_address_field = ft.TextField(
         label="Введите полный адрес",
-        hint_text="Например: город Минск ул. Октябрьская д 10/2",
+        hint_text="Например: город Минск, ул. Мира, 42а",
         width=600,
         multiline=False,
     )

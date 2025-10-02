@@ -8,7 +8,6 @@ from core.belpost_service import BelpostService
 from core.address_processor import AddressProcessor
 from logger import get_configured_logger
 
-# Создание логгера для модуля
 logger = get_configured_logger("core.address_service")
 
 class AddressService:
@@ -18,15 +17,10 @@ class AddressService:
     """
     
     def __init__(self):
-        # Инициализация базы данных
         self.engine = get_database_engine(echo=False)
         self.session = Session(self.engine)
-        
-        # Инициализация вспомогательных сервисов
         self.belpost_service = BelpostService()
         self.address_processor = AddressProcessor()
-        
-        # Параметры поиска адреса
         self.region = RegionType.NONE.value
         self.district = ""
         self.sovet = ""

@@ -10,7 +10,6 @@ from models.dropdown_values import RegionType, StreetType, CityType
 from config import settings
 from logger import get_configured_logger
 
-# Создание логгера для модуля
 logger = get_configured_logger("core.address_processor")
 
 class AddressProcessor:
@@ -21,7 +20,6 @@ class AddressProcessor:
     def __init__(self):
         self.abbr_dict = self._load_abbreviations()
         
-        # Словарь для замены сокращений
         self.replace_dict = {
             "г.": "город",
             "аг.": "агрогородок", 
@@ -37,7 +35,6 @@ class AddressProcessor:
         }
     
     def _load_abbreviations(self) -> Dict[str, str]:
-        """Загрузка словаря аббревиатур"""
         try:
             file_path = settings.data.abbrs_file
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -57,10 +54,8 @@ class AddressProcessor:
                      street_type:str = None, street_name: str = None, 
                      building: str = None,
                      spec_mode: bool = False) -> str:
-        """Универсальный конструктор адреса"""
         parts = []
         
-        # Проверяем, что значения не "НЕТ"
         if region and region != RegionType.NONE.value:
             region = region.lower().capitalize()
             parts.append(f"{region} область")
@@ -77,14 +72,11 @@ class AddressProcessor:
             else:
                 parts.append(city_name)
         
-        # Обработка улицы с учетом опции "ДРУГОЕ"
         if street_name:
             street_name = street_name.lower().capitalize()
             if street_type == StreetType.OTHER.value:
-                # Если выбрано "ДРУГОЕ", добавляем только название улицы без типа
                 parts.append(street_name)
             elif street_type != StreetType.NONE.value:
-                # Если выбран конкретный тип, добавляем тип + название
                 parts.append(f"{street_type} {street_name}")
         
         if building:
@@ -110,20 +102,15 @@ class AddressProcessor:
         """
         mask = pd.Series(True, index=df.index)
         
-        # Фильтрация по области (если выбрана)
         if region and region != RegionType.NONE.value:
             mask &= df["Область"].astype(str).str.contains(region, case=False, na=False)
         
-        # Фильтрация по району (если указан)
         if district:
             mask &= df["Район"].astype(str).str.contains(district, case=False, na=False)
         
-        # Фильтрация по городу (если указан)
         if city:
             mask &= df["Город"].astype(str).str.contains(city, case=False, na=False)
             
-        # Примечание: для сельсовета нет прямого соответствия в данных от belpost.by,
-        # но можно попробовать найти его в названии населенного пункта или района
         if sovet:
             sovet_mask = (
                 df["Город"].astype(str).str.contains(sovet, case=False, na=False) |
@@ -135,7 +122,6 @@ class AddressProcessor:
     
     def add_similarity_scores(self, df: pd.DataFrame, target_string: str, 
                             column_name: str) -> pd.DataFrame:
-        """Вычисление схожести с использованием rapidfuzz"""
         df = df.copy()
         scores = [fuzz.ratio(str(x).lower(), str(target_string).lower()) 
                  for x in df[column_name]]
@@ -144,7 +130,6 @@ class AddressProcessor:
         return df
     
     def house_in_range(self, house: str, rule: str) -> bool:
-        """Проверка принадлежности дома правилу из списка домов"""
         if not house or not rule:
             return False
             

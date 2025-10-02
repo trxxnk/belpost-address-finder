@@ -10,7 +10,6 @@ from config import settings
 from logger import get_configured_logger
 from exceptions import NetworkException, ParsingException, BelpostServiceException, WebDriverException
 
-# Создание логгера для модуля
 logger = get_configured_logger("core.belpost_service", "belpost.log")
 
 
@@ -21,9 +20,6 @@ class BelpostService:
     """
     
     def __init__(self):
-        """
-        Инициализация сервиса Белпочты.
-        """
         self.driver_pool = get_driver_pool()
         logger.info("Инициализирован сервис Белпочты")
     
@@ -109,10 +105,6 @@ class BelpostService:
                 self.driver_pool.release_driver(driver)
     
     def close(self):
-        """
-        Закрытие ресурсов сервиса.
-        Освобождает все используемые ресурсы.
-        """
         logger.info("Закрытие сервиса Белпочты")
         # Больше не нужно закрывать драйвер напрямую, 
         # так как этим занимается пул драйверов

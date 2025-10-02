@@ -19,23 +19,14 @@ class AddressViewModel(BaseViewModel):
     """
     
     def __init__(self, address_service: AddressService):
-        """
-        Инициализация ViewModel для поиска адресов
-        
-        Args:
-            address_service: Сервис для работы с адресами
-        """
         super().__init__()
         self.address_service = address_service
         self.logger = get_configured_logger("ui.viewmodels.address_viewmodel")
         
-        # Состояние поиска
         self.results: List[SearchResult] = []
         self.is_searching = False
         self.current_search_query = ""
         self.error_message = ""
-        
-        # Параметры поиска
         self.region = RegionType.NONE.value
         self.district = ""
         self.sovet = ""

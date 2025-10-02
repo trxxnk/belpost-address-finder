@@ -6,7 +6,6 @@
 from typing import Dict, Any, Callable, List
 from logger import get_configured_logger
 
-# Создание логгера для модуля
 logger = get_configured_logger("ui.viewmodels.base_viewmodel")
 
 
@@ -17,9 +16,6 @@ class BaseViewModel:
     """
     
     def __init__(self):
-        """
-        Инициализация базового ViewModel.
-        """
         self._callbacks: Dict[str, List[Callable]] = {}
         
     def register_callback(self, property_name: str, callback: Callable) -> None:

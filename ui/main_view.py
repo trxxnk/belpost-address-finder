@@ -15,7 +15,6 @@ from ui.components import create_header, create_search_form, create_result_card
 from models.dropdown_values import RegionType, CityType, StreetType
 from logger import get_configured_logger
 
-# Создание логгера для модуля
 logger = get_configured_logger("ui.main_view")
 
 
@@ -26,15 +25,8 @@ class MainView:
     """
     
     def __init__(self, page: ft.Page):
-        """
-        Инициализация главного представления
-        
-        Args:
-            page: Страница Flet
-        """
         self.page = page
         
-        # Создание ViewModel
         address_service = AddressService()
         self.address_viewmodel = AddressViewModel(address_service)
         

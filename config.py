@@ -6,7 +6,6 @@ import os
 from typing import Dict, List, Any, Optional
 from dotenv import load_dotenv
 
-# Загрузка переменных окружения из .env файла
 load_dotenv()
 
 class DataConfig:
@@ -27,7 +26,6 @@ class DatabaseConfig:
     
     @property
     def connection_string(self) -> str:
-        """Строка подключения к базе данных"""
         return f"mysql+mysqlconnector://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
 
 
@@ -41,7 +39,6 @@ class BelpostConfig:
     
     @property
     def search_url(self) -> str:
-        """URL для поиска почтового индекса"""
         return f"{self.base_url}{self.search_endpoint}"
 
 
@@ -54,17 +51,14 @@ class SeleniumConfig:
         self.window_width = int(os.getenv("SELENIUM_WINDOW_WIDTH", "1920"))
         self.window_height = int(os.getenv("SELENIUM_WINDOW_HEIGHT", "1080"))
         
-        # Стандартные опции Chrome
         self.chrome_options = [
             "--headless" if self.headless else "",
             "--no-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
         ]
-        # Удаление пустых опций
         self.chrome_options = [opt for opt in self.chrome_options if opt]
         
-        # Добавление пользовательских опций из переменной окружения
         custom_options = os.getenv("SELENIUM_CHROME_OPTIONS", "")
         if custom_options:
             self.chrome_options.extend(custom_options.split(","))
@@ -81,7 +75,6 @@ class LoggingConfig:
         self.backup_count = int(os.getenv("LOG_BACKUP_COUNT", "5"))
         self.use_emoji = os.getenv("LOG_USE_EMOJI", "true").lower() == "true"
         
-        # Проверка уровня логирования
         allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if self.log_level not in allowed_levels:
             import logging
@@ -98,7 +91,6 @@ class UIConfig:
         self.theme_mode = os.getenv("UI_THEME_MODE", "LIGHT").upper()
         self.max_results = int(os.getenv("UI_MAX_RESULTS", "9"))
         
-        # Проверка режима темы
         allowed_modes = ["LIGHT", "DARK", "SYSTEM"]
         if self.theme_mode not in allowed_modes:
             import logging
@@ -113,14 +105,12 @@ class AppConfig:
         self.environment = os.getenv("ENVIRONMENT", "development").lower()
         self.app_name = os.getenv("APP_NAME", "addr_corr")
         
-        # Проверка окружения
         allowed_environments = ["development", "testing", "production"]
         if self.environment not in allowed_environments:
             import logging
             logging.warning(f"Неверное окружение: {self.environment}. Используется development.")
             self.environment = "development"
         
-        # Вложенные настройки
         self.data = DataConfig()
         self.db = DatabaseConfig()
         self.belpost = BelpostConfig()
@@ -128,7 +118,6 @@ class AppConfig:
         self.logging = LoggingConfig()
         self.ui = UIConfig()
 
-# Создание глобального экземпляра настроек
 settings = AppConfig()
 
 

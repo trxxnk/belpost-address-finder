@@ -13,11 +13,8 @@ from config import settings
 
 
 class EmojiFormatter(logging.Formatter):
-    """
-    Кастомный форматтер для добавления эмодзи к уровням логирования
-    """
+    """Кастомный форматтер для добавления эмодзи к уровням логирования"""
     
-    # Словарь соответствия уровней логирования и эмодзи
     EMOJI_MAP = {
         'DEBUG': '🐛',
         'INFO': 'ℹ️ ',
@@ -27,29 +24,17 @@ class EmojiFormatter(logging.Formatter):
     }
     
     def __init__(self, fmt=None, datefmt=None, style='%', use_emoji=True):
-        """
-        Инициализация форматтера
-        
-        Args:
-            fmt: Формат сообщения
-            datefmt: Формат даты
-            style: Стиль форматирования
-            use_emoji: Использовать ли эмодзи (по умолчанию True)
-        """
         super().__init__(fmt, datefmt, style)
         self.use_emoji = use_emoji
     
     def format(self, record):
-        # Создаем копию записи, чтобы не изменять оригинал
         record_copy = logging.makeLogRecord(record.__dict__)
         
-        # Добавляем эмодзи к названию уровня, если включено
         if self.use_emoji:
             emoji = self.EMOJI_MAP.get(record_copy.levelname, '')
             if emoji:
                 record_copy.levelname = f"{emoji} {record_copy.levelname}"
         
-        # Вызываем стандартное форматирование
         return super().format(record_copy)
 
 

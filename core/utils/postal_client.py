@@ -4,19 +4,12 @@ import json
 import urllib.parse
 from logger import get_configured_logger
 
-# Создание логгера для модуля
 logger = get_configured_logger("core.utils.postal_client")
 
 class PostalClient:
     """Клиент для взаимодействия с микросервисом парсинга адресов"""
     
     def __init__(self, base_url: str = "http://localhost:5000"):
-        """
-        Инициализация клиента
-        
-        Args:
-            base_url: Базовый URL микросервиса
-        """
         self.base_url = base_url
         logger.info(f"Инициализирован PostalClient с базовым URL: {base_url}")
     

@@ -17,7 +17,6 @@ from config import settings
 from logger import get_configured_logger
 from exceptions import WebDriverException
 
-# Создание логгера для модуля
 logger = get_configured_logger("core.utils.webdriver_pool", "webdriver.log")
 
 

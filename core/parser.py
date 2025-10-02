@@ -19,7 +19,6 @@ from config import settings
 from logger import get_configured_logger
 from exceptions import ParsingException, NetworkException, WebDriverException
 
-# Создание логгера для модуля
 logger = get_configured_logger("core.parser", "parser.log")
 
 
