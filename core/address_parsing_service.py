@@ -6,10 +6,10 @@
 import re
 from typing import Dict, Any, Tuple, Optional
 from core.utils.postal_client import PostalClient
-from core.street_corrector import correct_street_name
 from core.address_processor import AddressProcessor
 from config import settings
 from logger import get_configured_logger
+from rapidfuzz import fuzz, process
 
 logger = get_configured_logger("core.address_parsing_service")
 
@@ -209,13 +209,18 @@ class AddressParsingService:
         if not region_raw:
             return None
         
-        region_clean = re.sub(r"(?<!\w)(область|обл\.?)(?!\w)", "", region_raw, flags=re.IGNORECASE).strip()
+        # Более агрессивное удаление слов "область" и вариантов
+        region_clean = re.sub(r"\s*(область|обл\.?)\s*", " ", region_raw, flags=re.IGNORECASE).strip()
+        logger.debug(f"Очистка области: '{region_raw}' -> '{region_clean}'")
         
+        # Проверяем совпадение с ключевыми словами областей
         for key, value in self.REGION_MAPPINGS.items():
-            if key in region_clean.lower():
-                logger.debug(f"Маппинг области: '{region_raw}' -> '{value}'")
+            region_lower = region_clean.lower()
+            if key in region_lower:
+                logger.debug(f"Маппинг области найден: '{region_raw}' -> '{region_clean}' -> '{value}'")
                 return value
         
+        logger.debug(f"Маппинг области не найден для: '{region_raw}' -> '{region_clean}'")
         return None
     
     def clean_text_from_type(self, text: str, type_mappings: Dict[str, str]) -> str:
@@ -254,22 +259,27 @@ class AddressParsingService:
         logger.info(f"Начало парсинга адреса: '{full_address}'")
         
         try:
-            result = self._parse_address_components(full_address)
+            result = self._preprocess_and_parse_address_components(full_address)
+            logger.info(f"Результат парсинга #1: {result}")
+            corrected_result = self._correct_street_if_needed(result)
+            logger.info(f"Результат парсинга #2: {corrected_result}")
             
-            # Коррекция улицы, если необходимо
-            if result.get("street_name") and settings.data.street_book_file:
-                corrected_result = self._correct_street_if_needed(result)
-                if corrected_result:
-                    result.update(corrected_result)
+            # Объединяем результаты, но сохраняем изначальные значения district и region
+            final_result = result.copy()
             
-            logger.info(f"Парсинг завершен успешно: {result}")
-            return result
+            # Обновляем поля из корректированного результата, но только если они не пустые
+            for key, value in corrected_result.items():
+                if value is not None:  # Обновляем только если значение не None
+                    final_result[key] = value
+                    
+            logger.info(f"Парсинг завершен успешно: {final_result}")
+            return final_result
             
         except Exception as e:
             logger.error(f"Ошибка при парсинге адреса '{full_address}': {e}")
             return {}
     
-    def _parse_address_components(self, address: str) -> Dict[str, Any]:
+    def _preprocess_and_parse_address_components(self, address: str) -> Dict[str, Any]:
         """
         Парсинг компонентов адреса без коррекции.
         
@@ -279,15 +289,9 @@ class AddressParsingService:
         Returns:
             Dict[str, Any]: Словарь с компонентами адреса
         """
-        # Предобработка
         preprocessed_address = self.preprocess_address(address)
-        
-        # Извлечение сельсовета
         selsovet_name, address_no_selsovet = self.extract_selsovet(preprocessed_address)
-        
-        # Парсинг через postal_client
-        parsed_address = self.postal_client.parse_address(address_no_selsovet)
-        
+        parsed_address = self.postal_client.parse_address(address_no_selsovet) 
         if not parsed_address:
             logger.warning("Нет ответа от сервиса парсинга")
             return {}
@@ -303,18 +307,27 @@ class AddressParsingService:
             "house_number": None
         }
         
-        # Обработка области
         if "state" in parsed_address:
             region_mapped = self.map_region(parsed_address["state"])
-            result["region"] = region_mapped
+            # Сохраняем оригинальное значение если маппинг не удался
+            if region_mapped is not None:
+                result["region"] = region_mapped
+            else:
+                # Если маппинг не удался, сохраняем оригинальное значение из микросервиса
+                result["region"] = parsed_address["state"]
+                logger.debug(f"Маппинг области не удался, сохраняем оригинальное значение: '{parsed_address['state']}'")
         
-        # Обработка района
         if "state_district" in parsed_address:
             district_clean = re.sub(r"(?<!\w)(район|р-н|рн)\.?(?!\w)", "", 
                                  parsed_address["state_district"], flags=re.IGNORECASE).strip()
-            result["district"] = district_clean
+            # Сохраняем очищенное значение района или оригинальное если пустое
+            if district_clean:
+                result["district"] = district_clean
+            else:
+                # Если очистка убрала все, сохраняем оригинальное значение
+                result["district"] = parsed_address["state_district"]
+                logger.debug(f"Очистка района убрала все содержимое, сохраняем оригинальное: '{parsed_address['state_district']}'")
         
-        # Обработка города
         city_raw = parsed_address.get("city", "") or parsed_address.get("house", "")
         if city_raw:
             city_type = self.classify_city_type(city_raw)
@@ -322,7 +335,6 @@ class AddressParsingService:
             result["city_type"] = city_type
             result["city_name"] = city_name
         
-        # Обработка улицы
         if "road" in parsed_address:
             street_raw = parsed_address["road"]
             street_type = self.classify_street_type(street_raw)
@@ -330,13 +342,47 @@ class AddressParsingService:
             result["street_type"] = street_type
             result["street_name"] = street_name
         
-        # Обработка номера дома
         if "house_number" in parsed_address:
             house_clean = re.sub(r"(?<!\w)(дом|д\.?)(?!\w)", "", 
                                parsed_address["house_number"], flags=re.IGNORECASE).strip()
             result["house_number"] = house_clean
         
         return result
+    
+    def correct_street_name(self, input_street: str, correct_streets_file: str, threshold: int = 80) -> str:
+        """
+        Исправляет опечатки в названии улицы с использованием fuzzy matching.
+        
+        Args:
+            input_street (str): Входное название улицы для проверки
+            correct_streets_file (str): Путь к файлу с корректными названиями улиц
+            threshold (int): Пороговое значение совпадения (0-100), по умолчанию 80
+        
+        Returns:
+        str: Исправленное название улицы или исходное, если совпадение слабое
+        """
+        try:
+            with open(correct_streets_file, 'r', encoding='utf-8') as file:
+                correct_streets = [line.strip().lower() for line in file if line.strip()]
+            
+            if not correct_streets:
+                return input_street
+            
+            best_match, score, _ = process.extractOne(input_street.lower(), correct_streets, scorer=fuzz.token_sort_ratio)
+            
+            if score >= threshold:
+                logger.debug(f"Исправление улицы: '{input_street}' -> '{best_match}' (score: {score}%)")
+                return best_match.lower().capitalize()
+            else:
+                logger.debug(f"Нет совпадения: '{input_street}' -> '{best_match}' (score: {score}%)")
+                return input_street
+                
+        except FileNotFoundError:
+            logger.error(f"Файл {correct_streets_file} не найден")
+            return input_street
+        except Exception as e:
+            logger.error(f"Произошла ошибка: {e}")
+            return input_street
     
     def _correct_street_if_needed(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -350,6 +396,7 @@ class AddressParsingService:
         """
         try:
             # Строим временный адрес для коррекции
+            logger.info(f"(result в build)[_correct_street_if_needed]: {result=}")
             temp_address = self.address_processor.build_address(
                 region=result.get("region"),
                 district=result.get("district"),
@@ -360,25 +407,14 @@ class AddressParsingService:
                 street_name=result.get("street_name"),
                 spec_mode=True
             )
+            logger.info(f"(temp_address)[_correct_street_if_needed]: {temp_address=}")
             
-            # Пытаемся скорректировать улицу
-            corrected_street = correct_street_name(temp_address, settings.data.street_book_file, threshold=80)
-            
-            if corrected_street == temp_address:
-                # Коррекция не нужна
-                return {}
-            
-            logger.debug(f"Коррекция улицы: '{temp_address}' -> '{corrected_street}'")
-            
-            # Парсим только скорректированную улицу
-            corrected_full_address = corrected_street + " " + (result.get("house_number", "") or "")
-            corrected_components = self._parse_address_components(corrected_full_address)
-            
-            # Возвращаем только данные улицы
-            return {
-                "street_type": corrected_components.get("street_type"),
-                "street_name": corrected_components.get("street_name")
-            }
+            corrected_street_name = self.correct_street_name(temp_address, settings.data.street_book_file, threshold=80)
+            logger.info(f"(corrected_street_name)[_correct_street_if_needed]: {corrected_street_name=}")
+            corrected_address_components = self._preprocess_and_parse_address_components(corrected_street_name)
+            logger.info(f"(_preprocess_and_parse_address_components)[_correct_street_if_needed]: {corrected_address_components=}")
+            corrected_address_components.update({"house_number": result.get("house_number")})
+            return corrected_address_components
             
         except Exception as e:
             logger.error(f"Ошибка при коррекции улицы: {e}")

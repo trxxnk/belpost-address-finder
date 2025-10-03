@@ -158,27 +158,16 @@ def create_search_form(on_search=None, on_parse=None):
             parsed_data = address_service.parse_and_fill_address(address)
             
             if parsed_data:
-                # Словарь соответствия областей и их значений в перечислении
-                oblast_mapping = {
-                    "МИНСКАЯ": "МИНСКАЯ",
-                    "БРЕСТСКАЯ": "БРЕСТСКАЯ", 
-                    "ВИТЕБСКАЯ": "ВИТЕБСКАЯ",
-                    "ГОМЕЛЬСКАЯ": "ГОМЕЛЬСКАЯ",
-                    "ГРОДНЕНСКАЯ": "ГРОДНЕНСКАЯ",
-                    "МОГИЛЕВСКАЯ": "МОГИЛЕВСКАЯ"
-                }
-                
-                # Обработка области
                 if "region" in parsed_data and parsed_data["region"]:
-                    region_value = parsed_data["region"]
-                    if region_value in oblast_mapping:
-                        region_dropdown.value = region_value
-                        on_region_change(e)  # Активируем поля района и сельсовета
+                    region_value, _ = parsed_data["region"].split(" ")
+                    region_dropdown.value = region_value.upper()
+                    on_region_change(e)  # Активируем поля района и сельсовета
+                    e.page.update()
                 
                 # Обработка района
                 if "district" in parsed_data and parsed_data["district"] and not district_field.disabled:
                     district_field.value = parsed_data["district"].title()
-                
+
                 # Обработка сельсовета
                 if "sovet" in parsed_data and parsed_data["sovet"] and not sovet_field.disabled:
                     sovet_field.value = parsed_data["sovet"].title()
