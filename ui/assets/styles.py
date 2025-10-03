@@ -57,9 +57,29 @@ ICONS = {
 }
 
 # Стили карточек
-def get_result_card_style(is_match=False):
+def get_result_card_style(is_match=False, similarity_score=None):
+    """
+    Возвращает стиль карточки на основе качества совпадения
+    
+    Args:
+        is_match: Точное совпадение дома
+        similarity_score: Score совпадения адреса
+        
+    Returns:
+        dict: Стили карточки
+    """
+    # Определяем цвет фона на основе качества совпадения
+    if is_match:
+        bgcolor = COLORS["match_bg"]  # Зеленый для точного совпадения дома
+    elif similarity_score and similarity_score >= 70:
+        bgcolor = ft.Colors.BLUE_50   # Светло-синий для хорошего совпадения
+    elif similarity_score and similarity_score >= 50:
+        bgcolor = ft.Colors.ORANGE_50 # Светло-оранжевый для среднего совпадения
+    else:
+        bgcolor = COLORS["default_bg"]
+    
     return {
-        "bgcolor": COLORS["match_bg"] if is_match else COLORS["default_bg"],
+        "bgcolor": bgcolor,
         "padding": PADDING["medium"],
         "border_radius": 10,
     }

@@ -260,9 +260,7 @@ class AddressParsingService:
         
         try:
             result = self._preprocess_and_parse_address_components(full_address)
-            logger.info(f"Результат парсинга #1: {result}")
             corrected_result = self._correct_street_if_needed(result)
-            logger.info(f"Результат парсинга #2: {corrected_result}")
             
             # Объединяем результаты, но сохраняем изначальные значения district и region
             final_result = result.copy()
@@ -396,7 +394,6 @@ class AddressParsingService:
         """
         try:
             # Строим временный адрес для коррекции
-            logger.info(f"(result в build)[_correct_street_if_needed]: {result=}")
             temp_address = self.address_processor.build_address(
                 region=result.get("region"),
                 district=result.get("district"),
@@ -407,12 +404,9 @@ class AddressParsingService:
                 street_name=result.get("street_name"),
                 spec_mode=True
             )
-            logger.info(f"(temp_address)[_correct_street_if_needed]: {temp_address=}")
             
             corrected_street_name = self.correct_street_name(temp_address, settings.data.street_book_file, threshold=80)
-            logger.info(f"(corrected_street_name)[_correct_street_if_needed]: {corrected_street_name=}")
             corrected_address_components = self._preprocess_and_parse_address_components(corrected_street_name)
-            logger.info(f"(_preprocess_and_parse_address_components)[_correct_street_if_needed]: {corrected_address_components=}")
             corrected_address_components.update({"house_number": result.get("house_number")})
             return corrected_address_components
             
